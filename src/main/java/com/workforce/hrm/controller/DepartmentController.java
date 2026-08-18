@@ -2,45 +2,74 @@ package com.workforce.hrm.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import com.workforce.hrm.entity.Department;
+import com.workforce.hrm.dto.request.DepartmentRequestDTO;
+import com.workforce.hrm.dto.response.DepartmentResponseDTO;
 import com.workforce.hrm.service.DepartmentService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/departments")
+@Validated
 public class DepartmentController {
 
-	private DepartmentService departmentService;
+    private final DepartmentService departmentService;
 
-	@PostMapping
-	public Department createDepartment(@RequestBody Department department) {
+    public DepartmentController(DepartmentService departmentService) {
+        this.departmentService = departmentService;
+    }
 
-		return departmentService.createDepartment(department);
-	}
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('DEPARTMENT_CREATE')")
+    public DepartmentResponseDTO createDepartment(
+            @Valid @RequestBody DepartmentRequestDTO request) {
 
-	@GetMapping
-	public List<Department> getAllDepartments() {
-		return departmentService.getAllDepartments();
-	}
+        return departmentService.createDepartment(request);
+    }
 
-	@GetMapping("/{id}")
-	public Department getDepartmentById(@PathVariable Long id) {
+    @GetMapping
+    @PreAuthorize("hasAuthority('DEPARTMENT_READ')")
+    public List<DepartmentResponseDTO> getAllDepartments() {
 
-		return departmentService.getDepartmentById(id);
-		
-	}
+        return departmentService.getAllDepartments();
+    }
 
-	@PutMapping("/{id}")
-	public Department updateDepartment(@PathVariable Long id, @RequestBody Department department) {
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('DEPARTMENT_READ')")
+    public DepartmentResponseDTO getDepartmentById(
+            @PathVariable Long id) {
 
-		return departmentService.updateDepartment(id, department);
-	}
+        return departmentService.getDepartmentById(id);
+    }
 
-	@DeleteMapping("/{id}")
-	public void deleteDepartment(@PathVariable Long id) {
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('DEPARTMENT_UPDATE')")
+    public DepartmentResponseDTO updateDepartment(
+            @PathVariable Long id,
+            @Valid @RequestBody DepartmentRequestDTO request) {
 
-		departmentService.deleteDepartment(id);
-	}
+        return departmentService.updateDepartment(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('DEPARTMENT_DELETE')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteDepartment(@PathVariable Long id) {
+
+        departmentService.deleteDepartment(id);
+    }
+
+    @GetMapping("/company/{companyId}")
+    @PreAuthorize("hasAuthority('DEPARTMENT_READ')")
+    public List<DepartmentResponseDTO> getDepartmentsByCompany(
+            @PathVariable Long companyId) {
+
+        return departmentService.getDepartmentsByCompany(companyId);
+    }
 }

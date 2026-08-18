@@ -2,10 +2,19 @@ package com.workforce.hrm.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.workforce.hrm.dto.request.PayrollRequestDTO;
 import com.workforce.hrm.dto.response.PayrollResponseDTO;
@@ -13,61 +22,126 @@ import com.workforce.hrm.service.PayrollService;
 
 import jakarta.validation.Valid;
 
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-
 @RestController
 @RequestMapping("/api/payroll")
 @Validated
 public class PayrollController {
 
-	private final PayrollService payrollService;
+    private final PayrollService payrollService;
 
-	public PayrollController(PayrollService payrollService) {
-		this.payrollService = payrollService;
-	}
+    public PayrollController(
+            PayrollService payrollService) {
 
-	@PostMapping("/generate")
-	public ResponseEntity<PayrollResponseDTO> generatePayroll(@Valid @RequestBody PayrollRequestDTO request) {
+        this.payrollService = payrollService;
+    }
 
-		PayrollResponseDTO response = payrollService.generatePayroll(request);
+    // =========================================================
+    // GENERATE PAYROLL
+    // =========================================================
 
-		return new ResponseEntity<>(response, HttpStatus.CREATED);
-	}
+    @PostMapping("/generate")
+    @PreAuthorize("hasAuthority('PAYROLL_CREATE')")
+    public ResponseEntity<PayrollResponseDTO>
+            generatePayroll(
+                    @Valid @RequestBody
+                    PayrollRequestDTO request) {
 
-	@GetMapping("/{payrollId}")
-	public ResponseEntity<PayrollResponseDTO> getPayrollById(@PathVariable Long payrollId) {
+        PayrollResponseDTO response =
+                payrollService.generatePayroll(request);
 
-		return ResponseEntity.ok(payrollService.getPayrollById(payrollId));
-	}
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
 
-	@GetMapping
-	public ResponseEntity<List<PayrollResponseDTO>> getAllPayrolls() {
+    // =========================================================
+    // GET ALL PAYROLLS
+    // =========================================================
 
-		return ResponseEntity.ok(payrollService.getAllPayrolls());
-	}
+    @GetMapping
+    @PreAuthorize("hasAuthority('PAYROLL_READ')")
+    public ResponseEntity<List<PayrollResponseDTO>>
+            getAllPayrolls() {
 
-	@GetMapping("/employee/{employeeId}")
-	public ResponseEntity<List<PayrollResponseDTO>> getPayrollByEmployee(@PathVariable Long employeeId) {
+        List<PayrollResponseDTO> payrolls =
+                payrollService.getAllPayrolls();
 
-		return ResponseEntity.ok(payrollService.getPayrollByEmployee(employeeId));
-	}
+        return ResponseEntity.ok(payrolls);
+    }
 
-	@DeleteMapping("/{payrollId}")
-	public ResponseEntity<String> deletePayroll(@PathVariable Long payrollId) {
+    // =========================================================
+    // GET PAYROLL BY ID
+    // =========================================================
 
-		payrollService.deletePayroll(payrollId);
+    @GetMapping("/{payrollId}")
+    @PreAuthorize("hasAuthority('PAYROLL_READ')")
+    public ResponseEntity<PayrollResponseDTO>
+            getPayrollById(
+                    @PathVariable Long payrollId) {
 
-		return ResponseEntity.ok("Payroll deleted successfully.");
-	}
+        PayrollResponseDTO response =
+                payrollService
+                        .getPayrollById(payrollId);
 
-	@GetMapping("/slip/{payrollId}")
-	public ResponseEntity<byte[]> downloadSalarySlip(@PathVariable Long payrollId) {
+        return ResponseEntity.ok(response);
+    }
 
-		byte[] pdf = payrollService.generateSalarySlip(payrollId);
+    // =========================================================
+    // GET PAYROLL BY EMPLOYEE
+    // =========================================================
 
-		return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=SalarySlip.pdf")
-				.contentType(MediaType.APPLICATION_PDF).body(pdf);
-	}
+    @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAuthority('PAYROLL_READ')")
+    public ResponseEntity<List<PayrollResponseDTO>>
+            getPayrollByEmployee(
+                    @PathVariable Long employeeId) {
 
+        List<PayrollResponseDTO> payrolls =
+                payrollService
+                        .getPayrollByEmployee(employeeId);
+
+        return ResponseEntity.ok(payrolls);
+    }
+
+    // =========================================================
+    // DELETE PAYROLL
+    // =========================================================
+
+    @DeleteMapping("/{payrollId}")
+    @PreAuthorize("hasAuthority('PAYROLL_DELETE')")
+    public ResponseEntity<Void>
+            deletePayroll(
+                    @PathVariable Long payrollId) {
+
+        payrollService.deletePayroll(payrollId);
+
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
+
+    // =========================================================
+    // DOWNLOAD SALARY SLIP
+    // =========================================================
+
+    @GetMapping("/slip/{payrollId}")
+    @PreAuthorize("hasAuthority('PAYROLL_READ')")
+    public ResponseEntity<byte[]>
+            downloadSalarySlip(
+                    @PathVariable Long payrollId) {
+
+        byte[] pdf =
+                payrollService
+                        .generateSalarySlip(payrollId);
+
+        return ResponseEntity
+                .ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"SalarySlip-"
+                                + payrollId
+                                + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
 }

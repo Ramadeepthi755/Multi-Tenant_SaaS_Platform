@@ -1,24 +1,44 @@
 package com.workforce.hrm.service;
 
-import com.workforce.hrm.dto.request.CompanyRequestDTO;
-import com.workforce.hrm.dto.response.CompanyResponseDTO;
-
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.workforce.hrm.dto.request.CompanyRequestDTO;
+import com.workforce.hrm.dto.response.CompanyResponseDTO;
+
 public interface CompanyService {
 
-	CompanyResponseDTO createCompany(CompanyRequestDTO request);
+    CompanyResponseDTO createCompany(
+            CompanyRequestDTO request
+    );
 
-	Page<CompanyResponseDTO> getAllCompanies(Pageable pageable);
+    Page<CompanyResponseDTO> getAllCompanies(
+            String search,
+            Pageable pageable
+    );
 
-	CompanyResponseDTO getCompanyById(Long id);
+    CompanyResponseDTO getCompanyById(
+            Long id
+    );
 
-	CompanyResponseDTO updateCompany(Long id, CompanyRequestDTO request);
+    CompanyResponseDTO updateCompany(
+            Long id,
+            CompanyRequestDTO request
+    );
 
-	void deleteCompany(Long id);
+    CompanyResponseDTO activateCompany(
+            Long id
+    );
 
-	List<CompanyResponseDTO> getAllCompanies();
+    CompanyResponseDTO deactivateCompany(
+            Long id
+    );
+
+    void deleteCompany(
+            Long id
+    );
+
+    List<CompanyResponseDTO> getAllCompanies();
 }

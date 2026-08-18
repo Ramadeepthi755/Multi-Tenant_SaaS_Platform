@@ -1,69 +1,326 @@
 package com.workforce.hrm.service.impl;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.workforce.hrm.dto.request.DesignationRequestDTO;
+import com.workforce.hrm.dto.response.DesignationResponseDTO;
+import com.workforce.hrm.entity.Department;
 import com.workforce.hrm.entity.Designation;
+import com.workforce.hrm.exception.ResourceNotFoundException;
+import com.workforce.hrm.mapper.DesignationMapper;
+import com.workforce.hrm.repository.DepartmentRepository;
 import com.workforce.hrm.repository.DesignationRepository;
+import com.workforce.hrm.security.SecurityUtils;
 import com.workforce.hrm.service.DesignationService;
+import com.workforce.hrm.service.AuditLogService;
 
 @Service
-public class DesignationServiceImpl implements DesignationService {
+@Transactional
+public class DesignationServiceImpl
+        implements DesignationService {
 
-	
-	private DesignationRepository designationRepository;
+    private final DesignationRepository designationRepository;
+    private final DepartmentRepository departmentRepository;
+    
+    private final AuditLogService auditLogService;
+    
+    public DesignationServiceImpl(
+            DesignationRepository designationRepository,
+            DepartmentRepository departmentRepository,
+            AuditLogService auditLogService) {
 
-	@Override
-	public Designation createDesignation(Designation designation) {
+        this.designationRepository = designationRepository;
+        this.departmentRepository = departmentRepository;
+        this.auditLogService = auditLogService;
+    }
 
-		if (designationRepository.existsByDesignationCode(designation.getDesignationCode())) {
+    // =========================================================
+    // CREATE
+    // =========================================================
 
-			throw new RuntimeException("Designation Code Already Exists");
-		}
+    @Override
+    public DesignationResponseDTO createDesignation(
+            DesignationRequestDTO request) {
 
-		return designationRepository.save(designation);
-	}
+        if (designationRepository.existsByDesignationCode(
+                request.getDesignationCode())) {
 
-	@Override
-	public List<Designation> getAllDesignations() {
-		return designationRepository.findAll();
-	}
+            throw new RuntimeException(
+                    "Designation Code Already Exists");
+        }
 
-	@Override
-	public Designation getDesignationById(Long id) {
+        Department department =
+                getDepartmentAndValidateAccess(
+                        request.getDepartmentId());
 
-		return designationRepository.findById(id).orElseThrow(() -> new RuntimeException("Designation Not Found"));
-	}
+        Designation designation =
+                DesignationMapper.toEntity(
+                        request,
+                        department);
+        Designation savedDesignation =
+                designationRepository.save(designation);
 
-	@Override
-	public Designation updateDesignation(Long id, Designation designation) {
+        auditLogService.saveLog(
+                "CREATE",
+                "DESIGNATION",
+                "Created Designation : "
+                        + savedDesignation.getDesignationName(),
+                "SYSTEM");
 
-		Designation existingDesignation = designationRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("Designation Not Found"));
+        return DesignationMapper.toResponseDTO(
+                savedDesignation);
+    }
 
-		existingDesignation.setDesignationCode(designation.getDesignationCode());
+    // =========================================================
+    // GET ALL
+    // =========================================================
 
-		existingDesignation.setDesignationName(designation.getDesignationName());
+    @Override
+    @Transactional(readOnly = true)
+    public List<DesignationResponseDTO> getAllDesignations() {
 
-		existingDesignation.setDescription(designation.getDescription());
+        List<Designation> designations;
 
-		existingDesignation.setStatus(designation.getStatus());
+        if (SecurityUtils.isSuperAdmin()) {
 
-		return designationRepository.save(existingDesignation);
-	}
+            designations =
+                    designationRepository.findAll();
 
-	@Override
-	public void deleteDesignation(Long id) {
+        } else {
 
-		Designation designation = designationRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("Designation Not Found"));
+            Long companyId =
+                    getRequiredCurrentCompanyId();
 
-		designationRepository.delete(designation);
-	}
-	@Override
-	public List<Designation> getByDepartment(Long departmentId) {
-	    return designationRepository.findByDepartmentDepartmentId(departmentId);
-	}
+            designations =
+                    designationRepository
+                            .findByDepartmentCompanyId(
+                                    companyId);
+        }
+
+        return designations
+                .stream()
+                .map(DesignationMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // =========================================================
+    // GET BY ID
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public DesignationResponseDTO getDesignationById(
+            Long id) {
+
+        Designation designation =
+                getDesignationAndValidateAccess(id);
+
+        return DesignationMapper.toResponseDTO(
+                designation);
+    }
+
+    // =========================================================
+    // UPDATE
+    // =========================================================
+
+    @Override
+    public DesignationResponseDTO updateDesignation(
+            Long id,
+            DesignationRequestDTO request) {
+
+        Designation designation =
+                getDesignationAndValidateAccess(id);
+
+        if (!designation.getDesignationCode()
+                .equals(request.getDesignationCode())
+                &&
+                designationRepository
+                        .existsByDesignationCode(
+                                request.getDesignationCode())) {
+
+            throw new RuntimeException(
+                    "Designation Code Already Exists");
+        }
+
+        /*
+         * IMPORTANT:
+         * Validates that requested department belongs
+         * to the logged-in user's company.
+         */
+        Department department =
+                getDepartmentAndValidateAccess(
+                        request.getDepartmentId());
+
+        DesignationMapper.updateEntity(
+                designation,
+                request,
+                department);
+
+        Designation updatedDesignation =
+                designationRepository.save(designation);
+
+        auditLogService.saveLog(
+                "UPDATE",
+                "DESIGNATION",
+                "Updated Designation : "
+                        + updatedDesignation.getDesignationName(),
+                "SYSTEM");
+
+        return DesignationMapper.toResponseDTO(
+                updatedDesignation);
+    }
+
+    // =========================================================
+    // DELETE
+    // =========================================================
+
+    @Override
+    public void deleteDesignation(Long id) {
+
+        Designation designation =
+                getDesignationAndValidateAccess(id);
+
+        designationRepository.delete(designation);
+
+        auditLogService.saveLog(
+                "DELETE",
+                "DESIGNATION",
+                "Deleted Designation : "
+                        + designation.getDesignationName(),
+                "SYSTEM");
+    }
+
+    // =========================================================
+    // GET BY DEPARTMENT
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DesignationResponseDTO> getByDepartment(
+            Long departmentId) {
+
+        /*
+         * First validate whether current user is allowed
+         * to access this department.
+         */
+        getDepartmentAndValidateAccess(departmentId);
+
+        return designationRepository
+                .findByDepartmentDepartmentId(
+                        departmentId)
+                .stream()
+                .map(DesignationMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // =========================================================
+    // GET DESIGNATION + TENANT VALIDATION
+    // =========================================================
+
+    private Designation getDesignationAndValidateAccess(
+            Long designationId) {
+
+        Designation designation =
+                designationRepository
+                        .findById(designationId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Designation Not Found"));
+
+        validateDesignationCompanyAccess(
+                designation);
+
+        return designation;
+    }
+
+    // =========================================================
+    // VALIDATE DESIGNATION COMPANY
+    // =========================================================
+
+    private void validateDesignationCompanyAccess(
+            Designation designation) {
+
+        if (SecurityUtils.isSuperAdmin()) {
+            return;
+        }
+
+        Long currentCompanyId =
+                getRequiredCurrentCompanyId();
+
+        if (designation.getDepartment() == null ||
+                designation.getDepartment()
+                        .getCompany() == null ||
+                designation.getDepartment()
+                        .getCompany()
+                        .getId() == null ||
+                !currentCompanyId.equals(
+                        designation
+                                .getDepartment()
+                                .getCompany()
+                                .getId())) {
+
+            throw new AccessDeniedException(
+                    "Access Denied: Designation belongs to another company");
+        }
+    }
+
+    // =========================================================
+    // GET DEPARTMENT + TENANT VALIDATION
+    // =========================================================
+
+    private Department getDepartmentAndValidateAccess(
+            Long departmentId) {
+
+        Department department =
+                departmentRepository
+                        .findById(departmentId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Department Not Found"));
+
+        /*
+         * SUPER_ADMIN can use departments
+         * belonging to any company.
+         */
+        if (SecurityUtils.isSuperAdmin()) {
+            return department;
+        }
+
+        Long currentCompanyId =
+                getRequiredCurrentCompanyId();
+
+        if (department.getCompany() == null ||
+                department.getCompany().getId() == null ||
+                !currentCompanyId.equals(
+                        department.getCompany().getId())) {
+
+            throw new AccessDeniedException(
+                    "Access Denied: Department belongs to another company");
+        }
+
+        return department;
+    }
+
+    // =========================================================
+    // CURRENT COMPANY
+    // =========================================================
+
+    private Long getRequiredCurrentCompanyId() {
+
+        Long companyId =
+                SecurityUtils.getCurrentCompanyId();
+
+        if (companyId == null) {
+
+            throw new AccessDeniedException(
+                    "No company assigned to current user");
+        }
+
+        return companyId;
+    }
 }

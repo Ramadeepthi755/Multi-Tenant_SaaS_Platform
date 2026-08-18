@@ -1,5 +1,7 @@
 package com.workforce.hrm.dto.response;
 
+import com.workforce.hrm.enums.CompanyStatus;
+
 public class CompanyResponseDTO {
 
 	private Long id;
@@ -11,6 +13,9 @@ public class CompanyResponseDTO {
 	private String email;
 
 	private String phone;
+	
+	private CompanyStatus status;
+	private boolean active;
 
 	public CompanyResponseDTO() {
 	}
@@ -61,5 +66,20 @@ public class CompanyResponseDTO {
 
 	public void setPhone(String phone) {
 		this.phone = phone;
+	}
+	public CompanyStatus getStatus() {
+	    return status;
+	}
+
+	public void setStatus(CompanyStatus status) {
+	    this.status = status;
+	}
+
+	public boolean isActive() {
+	    return active;
+	}
+
+	public void setActive(boolean active) {
+	    this.active = active;
 	}
 }

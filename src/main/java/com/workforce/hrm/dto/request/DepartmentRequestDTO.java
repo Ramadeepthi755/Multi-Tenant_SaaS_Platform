@@ -1,56 +1,63 @@
 package com.workforce.hrm.dto.request;
 
+import com.workforce.hrm.enums.DepartmentStatus;
+
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class DepartmentRequestDTO {
-	@NotBlank
-	private String departmentCode;
-	@NotBlank
-	private String departmentName;
-	@NotBlank
-	private String description;
-	@NotBlank
-	private String status;
-	@NotBlank
-	private Long companyId;
 
-	public String getDepartmentCode() {
-		return departmentCode;
-	}
+    @NotBlank(message = "Department Code is required")
+    private String departmentCode;
 
-	public void setDepartmentCode(String departmentCode) {
-		this.departmentCode = departmentCode;
-	}
+    @NotBlank(message = "Department Name is required")
+    private String departmentName;
 
-	public String getDepartmentName() {
-		return departmentName;
-	}
+    private String description;
 
-	public void setDepartmentName(String departmentName) {
-		this.departmentName = departmentName;
-	}
+    @NotNull(message = "Status is required")
+    private DepartmentStatus status;
 
-	public String getDescription() {
-		return description;
-	}
+    
+    private Long companyId;
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public String getDepartmentCode() {
+        return departmentCode;
+    }
 
-	public String getStatus() {
-		return status;
-	}
+    public void setDepartmentCode(String departmentCode) {
+        this.departmentCode = departmentCode;
+    }
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
+    public String getDepartmentName() {
+        return departmentName;
+    }
 
-	public Long getCompanyId() {
-		return companyId;
-	}
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
+    }
 
-	public void setCompanyId(Long companyId) {
-		this.companyId = companyId;
-	}
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public DepartmentStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(DepartmentStatus status) {
+        this.status = status;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
 }

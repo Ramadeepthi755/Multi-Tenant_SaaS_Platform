@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +25,7 @@ public class NotificationController {
 
 	// Create Notification
 	@PostMapping
+	@PreAuthorize("hasAuthority('NOTIFICATION_SEND')")
 	public ResponseEntity<NotificationResponseDTO> createNotification(
 			@Valid @RequestBody NotificationRequestDTO requestDTO) {
 
@@ -34,6 +36,7 @@ public class NotificationController {
 
 	// Get All Notifications of User
 	@GetMapping("/user/{userId}")
+	@PreAuthorize("hasAuthority('NOTIFICATION_READ')")
 	public ResponseEntity<List<NotificationResponseDTO>> getNotificationsByUser(@PathVariable Long userId) {
 
 		List<NotificationResponseDTO> response = notificationService.getNotificationsByUser(userId);
@@ -43,6 +46,7 @@ public class NotificationController {
 
 	// Get Unread Notifications
 	@GetMapping("/user/{userId}/unread")
+	@PreAuthorize("hasAuthority('NOTIFICATION_READ')")
 	public ResponseEntity<List<NotificationResponseDTO>> getUnreadNotifications(@PathVariable Long userId) {
 
 		List<NotificationResponseDTO> response = notificationService.getUnreadNotifications(userId);
@@ -52,6 +56,7 @@ public class NotificationController {
 
 	// Get Unread Notification Count
 	@GetMapping("/user/{userId}/count")
+	@PreAuthorize("hasAuthority('NOTIFICATION_READ')")
 	public ResponseEntity<Long> getUnreadNotificationCount(@PathVariable Long userId) {
 
 		long count = notificationService.getUnreadNotificationCount(userId);

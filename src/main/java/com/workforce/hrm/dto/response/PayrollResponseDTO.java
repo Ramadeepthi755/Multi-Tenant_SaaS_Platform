@@ -10,6 +10,7 @@ public class PayrollResponseDTO {
 	private Long payrollId;
 	private Long employeeId;
 	private String employeeName;
+	private String employeeCode;
 	private String month;
 	private Integer year;
 	private BigDecimal basicSalary;
@@ -19,7 +20,9 @@ public class PayrollResponseDTO {
 	private BigDecimal netSalary;
 	private LocalDateTime generatedDate;
 	private PayrollStatus payrollStatus;
+	private String departmentName;
 
+	
 	public PayrollResponseDTO() {
 	}
 
@@ -118,5 +121,21 @@ public class PayrollResponseDTO {
 	public void setPayrollStatus(PayrollStatus payrollStatus) {
 		this.payrollStatus = payrollStatus;
 	}
+	public String getEmployeeCode() {
+		return employeeCode;
+	}
+
+	public void setEmployeeCode(String employeeCode) {
+		this.employeeCode = employeeCode;
+	}
+
+	public String getDepartmentName() {
+		return departmentName;
+	}
+
+	public void setDepartmentName(String departmentName) {
+		this.departmentName = departmentName;
+	}
+
 
 }

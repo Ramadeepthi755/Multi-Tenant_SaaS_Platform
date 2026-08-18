@@ -5,27 +5,89 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.workforce.hrm.dto.request.EmployeeRequestDTO;
 import com.workforce.hrm.entity.Employee;
 import com.workforce.hrm.enums.EmployeeStatus;
 
 public interface EmployeeService {
 
-	Employee createEmployee(Employee employee);
+    // =========================================================
+    // CREATE EMPLOYEE
+    // =========================================================
 
-	List<Employee> getAllEmployees();
+    Employee createEmployee(
+            EmployeeRequestDTO request);
 
-	Employee getEmployeeById(Long id);
 
-	Employee updateEmployee(Long id, Employee employee);
+    // =========================================================
+    // GET ALL EMPLOYEES
+    // =========================================================
 
-	void deleteEmployee(Long id);
-	
-	Employee getEmployeeByCode(String code);
+    List<Employee> getAllEmployees();
 
-	List<Employee> getEmployeesByDepartment(Long departmentId);
 
-	List<Employee> getEmployeesByStatus(EmployeeStatus status);
+    // =========================================================
+    // GET EMPLOYEE BY ID
+    // =========================================================
 
-	Page<Employee> searchEmployees(String keyword, Pageable pageable);
-	Employee getEmployeeProfile(Long id);
+    Employee getEmployeeById(
+            Long id);
+
+
+    // =========================================================
+    // UPDATE EMPLOYEE
+    // =========================================================
+
+    Employee updateEmployee(
+            Long id,
+            Employee employee);
+
+
+    // =========================================================
+    // DELETE EMPLOYEE
+    // =========================================================
+
+    void deleteEmployee(
+            Long id);
+
+
+    // =========================================================
+    // GET EMPLOYEE BY CODE
+    // =========================================================
+
+    Employee getEmployeeByCode(
+            String code);
+
+
+    // =========================================================
+    // GET EMPLOYEES BY DEPARTMENT
+    // =========================================================
+
+    List<Employee> getEmployeesByDepartment(
+            Long departmentId);
+
+
+    // =========================================================
+    // GET EMPLOYEES BY STATUS
+    // =========================================================
+
+    List<Employee> getEmployeesByStatus(
+            EmployeeStatus status);
+
+
+    // =========================================================
+    // SEARCH EMPLOYEES
+    // =========================================================
+
+    Page<Employee> searchEmployees(
+            String keyword,
+            Pageable pageable);
+
+
+    // =========================================================
+    // EMPLOYEE PROFILE
+    // =========================================================
+
+    Employee getEmployeeProfile(
+            Long id);
 }

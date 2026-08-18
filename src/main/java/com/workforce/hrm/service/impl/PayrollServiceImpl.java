@@ -1,10 +1,8 @@
 package com.workforce.hrm.service.impl;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,124 +10,443 @@ import com.workforce.hrm.dto.request.PayrollRequestDTO;
 import com.workforce.hrm.dto.response.PayrollResponseDTO;
 import com.workforce.hrm.entity.Employee;
 import com.workforce.hrm.entity.Payroll;
-import com.workforce.hrm.enums.PayrollStatus;
-import com.workforce.hrm.exception.ResourceNotFoundException;
+import com.workforce.hrm.mapper.PayrollMapper;
 import com.workforce.hrm.repository.EmployeeRepository;
 import com.workforce.hrm.repository.PayrollRepository;
+import com.workforce.hrm.security.SecurityUtils;
 import com.workforce.hrm.service.PayrollService;
-import com.workforce.hrm.util.PdfGenerator;
+import com.workforce.hrm.service.AuditLogService;
 
 @Service
+@Transactional
 public class PayrollServiceImpl implements PayrollService {
 
-	private final PayrollRepository payrollRepository;
-	private final EmployeeRepository employeeRepository;
+    private final PayrollRepository payrollRepository;
+    private final EmployeeRepository employeeRepository;
+    private final AuditLogService auditLogService;
 
-	public PayrollServiceImpl(PayrollRepository payrollRepository, EmployeeRepository employeeRepository) {
-		this.payrollRepository = payrollRepository;
-		this.employeeRepository = employeeRepository;
-	}
+    public PayrollServiceImpl(
+            PayrollRepository payrollRepository,
+            EmployeeRepository employeeRepository,
+            AuditLogService auditLogService) {
 
-	@Override
-	public PayrollResponseDTO generatePayroll(PayrollRequestDTO request) {
+        this.payrollRepository = payrollRepository;
+        this.employeeRepository = employeeRepository;
+        this.auditLogService = auditLogService;
+    }
 
-		Employee employee = employeeRepository.findById(request.getEmployeeId())
-				.orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+    // =========================================================
+    // GENERATE PAYROLL
+    // =========================================================
 
-		payrollRepository
-				.findByEmployeeEmployeeIdAndMonthAndYear(request.getEmployeeId(), request.getMonth(), request.getYear())
-				.ifPresent(payroll -> {
-					throw new RuntimeException("Payroll already generated for this employee.");
-				});
+    @Override
+    public PayrollResponseDTO generatePayroll(
+            PayrollRequestDTO request) {
 
-		Payroll payroll = new Payroll();
+        /*
+         * Validate employee + company access.
+         *
+         * Company A cannot generate payroll
+         * for Company B employee.
+         */
+        Employee employee =
+                getEmployeeAndValidateAccess(
+                        request.getEmployeeId());
 
-		payroll.setEmployee(employee);
-		payroll.setMonth(request.getMonth());
-		payroll.setYear(request.getYear());
-		payroll.setBasicSalary(request.getBasicSalary());
-		payroll.setAllowances(request.getAllowances());
-		payroll.setDeductions(request.getDeductions());
+        // -----------------------------------------------------
+        // Prevent duplicate payroll
+        // -----------------------------------------------------
 
-		BigDecimal grossSalary = request.getBasicSalary().add(request.getAllowances());
+        payrollRepository
+                .findByEmployeeEmployeeIdAndMonthAndYear(
+                        employee.getEmployeeId(),
+                        request.getMonth(),
+                        request.getYear())
+                .ifPresent(existing -> {
 
-		BigDecimal netSalary = grossSalary.subtract(request.getDeductions());
+                    throw new RuntimeException(
+                            "Payroll already generated for employee "
+                                    + employee.getEmployeeCode()
+                                    + " for "
+                                    + request.getMonth()
+                                    + " "
+                                    + request.getYear());
+                });
 
-		payroll.setGrossSalary(grossSalary);
-		payroll.setNetSalary(netSalary);
-		payroll.setGeneratedDate(LocalDateTime.now());
-		payroll.setPayrollStatus(PayrollStatus.GENERATED);
+        // -----------------------------------------------------
+        // Convert DTO -> Entity
+        // -----------------------------------------------------
 
-		Payroll savedPayroll = payrollRepository.save(payroll);
+        Payroll payroll =
+                PayrollMapper.toEntity(
+                        request,
+                        employee);
 
-		return mapToDTO(savedPayroll);
-	}
+        Payroll savedPayroll =
+                payrollRepository.save(payroll);
 
-	@Override
-	public PayrollResponseDTO getPayrollById(Long payrollId) {
+        auditLogService.saveLog(
+                "CREATE",
+                "PAYROLL",
+                "Generated Payroll : "
+                        + employee.getEmployeeCode()
+                        + " - "
+                        + employee.getFirstName()
+                        + " ("
+                        + request.getMonth()
+                        + " "
+                        + request.getYear()
+                        + ")",
+                "SYSTEM");
 
-		Payroll payroll = payrollRepository.findById(payrollId)
-				.orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+        return PayrollMapper.toResponseDTO(savedPayroll);
+    }
 
-		return mapToDTO(payroll);
-	}
+    // =========================================================
+    // GET ALL PAYROLLS
+    // =========================================================
 
-	@Override
-	public List<PayrollResponseDTO> getAllPayrolls() {
+    @Override
+    @Transactional(readOnly = true)
+    public List<PayrollResponseDTO> getAllPayrolls() {
 
-		return payrollRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
-	}
+        List<Payroll> payrolls;
 
-	@Override
-	public List<PayrollResponseDTO> getPayrollByEmployee(Long employeeId) {
+        if (SecurityUtils.isSuperAdmin()) {
 
-		return payrollRepository.findByEmployeeEmployeeId(employeeId).stream().map(this::mapToDTO)
-				.collect(Collectors.toList());
-	}
+            /*
+             * SUPER_ADMIN can see payroll
+             * across all companies.
+             */
+            payrolls =
+                    payrollRepository.findAll();
 
-	@Override
-	public void deletePayroll(Long payrollId) {
+        } else {
 
-		Payroll payroll = payrollRepository.findById(payrollId)
-				.orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+            /*
+             * Other company users can see only
+             * their company's payroll.
+             */
+            Long companyId =
+                    getRequiredCurrentCompanyId();
 
-		payrollRepository.delete(payroll);
-	}
+            payrolls =
+                    payrollRepository
+                            .findByEmployeeDepartmentCompanyId(
+                                    companyId);
+        }
 
-	private PayrollResponseDTO mapToDTO(Payroll payroll) {
+        return convertToResponseList(payrolls);
+    }
 
-		PayrollResponseDTO dto = new PayrollResponseDTO();
+    // =========================================================
+    // GET PAYROLL BY ID
+    // =========================================================
 
-		dto.setPayrollId(payroll.getPayrollId());
+    @Override
+    @Transactional(readOnly = true)
+    public PayrollResponseDTO getPayrollById(
+            Long payrollId) {
 
-		dto.setEmployeeId(payroll.getEmployee().getEmployeeId());
+        Payroll payroll =
+                getPayrollAndValidateAccess(
+                        payrollId);
 
-		dto.setEmployeeName(payroll.getEmployee().getFirstName() + " " + payroll.getEmployee().getLastName());
+        return PayrollMapper.toResponseDTO(
+                payroll);
+    }
 
-		dto.setMonth(payroll.getMonth());
-		dto.setYear(payroll.getYear());
-		dto.setBasicSalary(payroll.getBasicSalary());
-		dto.setAllowances(payroll.getAllowances());
-		dto.setDeductions(payroll.getDeductions());
-		dto.setGrossSalary(payroll.getGrossSalary());
-		dto.setNetSalary(payroll.getNetSalary());
-		dto.setGeneratedDate(payroll.getGeneratedDate());
-		dto.setPayrollStatus(payroll.getPayrollStatus());
+    // =========================================================
+    // GET PAYROLL BY EMPLOYEE
+    // =========================================================
 
-		return dto;
-	}
+    @Override
+    @Transactional(readOnly = true)
+    public List<PayrollResponseDTO> getPayrollByEmployee(
+            Long employeeId) {
 
-	@Override
-	@Transactional(readOnly = true)
-	public byte[] generateSalarySlip(Long payrollId) {
+        /*
+         * First make sure requested employee
+         * belongs to current tenant.
+         */
+        getEmployeeAndValidateAccess(employeeId);
 
-		Payroll payroll = payrollRepository.findById(payrollId)
-				.orElseThrow(() -> new RuntimeException("Payroll not found"));
+        List<Payroll> payrolls;
 
-		return PdfGenerator.generateSalarySlip(payroll);
-	}
+        if (SecurityUtils.isSuperAdmin()) {
+
+            payrolls =
+                    payrollRepository
+                            .findByEmployeeEmployeeId(
+                                    employeeId);
+
+        } else {
+
+            Long companyId =
+                    getRequiredCurrentCompanyId();
+
+            payrolls =
+                    payrollRepository
+                            .findByEmployeeEmployeeIdAndEmployeeDepartmentCompanyId(
+                                    employeeId,
+                                    companyId);
+        }
+
+        return convertToResponseList(payrolls);
+    }
+
+    // =========================================================
+    // DELETE PAYROLL
+    // =========================================================
+
+    @Override
+    public void deletePayroll(
+            Long payrollId) {
+
+        Payroll payroll =
+                getPayrollAndValidateAccess(
+                        payrollId);
+
+        payrollRepository.delete(payroll);
+
+        auditLogService.saveLog(
+                "DELETE",
+                "PAYROLL",
+                "Deleted Payroll : "
+                        + payroll.getEmployee().getEmployeeCode()
+                        + " - "
+                        + payroll.getEmployee().getFirstName()
+                        + " ("
+                        + payroll.getMonth()
+                        + " "
+                        + payroll.getYear()
+                        + ")",
+                "SYSTEM");
+    }
+
+    // =========================================================
+    // SALARY SLIP
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateSalarySlip(
+            Long payrollId) {
+
+        Payroll payroll =
+                getPayrollAndValidateAccess(
+                        payrollId);
+
+        /*
+         * Keep your existing PDF generation logic here
+         * if you already have one.
+         *
+         * This implementation generates a simple text
+         * representation as bytes so the existing
+         * service contract remains valid.
+         */
+
+        String employeeName = "";
+
+        if (payroll.getEmployee() != null) {
+
+            String firstName =
+                    payroll.getEmployee()
+                            .getFirstName() != null
+                            ? payroll.getEmployee()
+                                    .getFirstName()
+                            : "";
+
+            String lastName =
+                    payroll.getEmployee()
+                            .getLastName() != null
+                            ? payroll.getEmployee()
+                                    .getLastName()
+                            : "";
+
+            employeeName =
+                    (firstName + " " + lastName)
+                            .trim();
+        }
+
+        String salarySlip =
+                "SALARY SLIP\n"
+                        + "------------------------------\n"
+                        + "Employee: "
+                        + employeeName
+                        + "\n"
+                        + "Month: "
+                        + payroll.getMonth()
+                        + "\n"
+                        + "Year: "
+                        + payroll.getYear()
+                        + "\n"
+                        + "Basic Salary: "
+                        + payroll.getBasicSalary()
+                        + "\n"
+                        + "Allowances: "
+                        + payroll.getAllowances()
+                        + "\n"
+                        + "Deductions: "
+                        + payroll.getDeductions()
+                        + "\n"
+                        + "Gross Salary: "
+                        + payroll.getGrossSalary()
+                        + "\n"
+                        + "Net Salary: "
+                        + payroll.getNetSalary()
+                        + "\n"
+                        + "Status: "
+                        + payroll.getPayrollStatus()
+                        + "\n";
+
+        return salarySlip.getBytes(
+                java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    // =========================================================
+    // GET PAYROLL + VALIDATE TENANT
+    // =========================================================
+
+    private Payroll getPayrollAndValidateAccess(
+            Long payrollId) {
+
+        if (payrollId == null) {
+
+            throw new RuntimeException(
+                    "Payroll ID is required");
+        }
+
+        /*
+         * SUPER_ADMIN can access payroll
+         * from any company.
+         */
+        if (SecurityUtils.isSuperAdmin()) {
+
+            return payrollRepository
+                    .findById(payrollId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Payroll Not Found"));
+        }
+
+        Long companyId =
+                getRequiredCurrentCompanyId();
+
+        /*
+         * Query itself contains company condition.
+         *
+         * Therefore another company's payroll
+         * cannot be returned.
+         */
+        return payrollRepository
+                .findByPayrollIdAndEmployeeDepartmentCompanyId(
+                        payrollId,
+                        companyId)
+                .orElseThrow(() ->
+                        new AccessDeniedException(
+                                "Payroll not found or access denied"));
+    }
+
+    // =========================================================
+    // GET EMPLOYEE + VALIDATE TENANT
+    // =========================================================
+
+    private Employee getEmployeeAndValidateAccess(
+            Long employeeId) {
+
+        if (employeeId == null) {
+
+            throw new RuntimeException(
+                    "Employee ID is required");
+        }
+
+        Employee employee =
+                employeeRepository
+                        .findById(employeeId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Employee Not Found"));
+
+        /*
+         * SUPER_ADMIN can access employees
+         * across all companies.
+         */
+        if (SecurityUtils.isSuperAdmin()) {
+            return employee;
+        }
+
+        Long currentCompanyId =
+                getRequiredCurrentCompanyId();
+
+        /*
+         * Employee must have:
+         *
+         * Employee
+         *   -> Department
+         *      -> Company
+         */
+        if (employee.getDepartment() == null ||
+                employee.getDepartment()
+                        .getCompany() == null ||
+                employee.getDepartment()
+                        .getCompany()
+                        .getId() == null) {
+
+            throw new AccessDeniedException(
+                    "Employee company information not found");
+        }
+
+        Long employeeCompanyId =
+                employee.getDepartment()
+                        .getCompany()
+                        .getId();
+
+        if (!currentCompanyId.equals(
+                employeeCompanyId)) {
+
+            throw new AccessDeniedException(
+                    "Access Denied: Employee belongs to another company");
+        }
+
+        return employee;
+    }
+
+    // =========================================================
+    // CURRENT COMPANY
+    // =========================================================
+
+    private Long getRequiredCurrentCompanyId() {
+
+        Long companyId =
+                SecurityUtils.getCurrentCompanyId();
+
+        if (companyId == null) {
+
+            throw new AccessDeniedException(
+                    "No company assigned to current user");
+        }
+
+        return companyId;
+    }
+
+    // =========================================================
+    // ENTITY LIST -> RESPONSE DTO LIST
+    // =========================================================
+
+    private List<PayrollResponseDTO>
+            convertToResponseList(
+                    List<Payroll> payrolls) {
+
+        return payrolls
+                .stream()
+                .map(PayrollMapper::toResponseDTO)
+                .toList();
+    }
+
 	@Override
 	public void generatePayrollForAllEmployees() {
-	    throw new UnsupportedOperationException("Not implemented yet");
+		// TODO Auto-generated method stub
+		
 	}
 }

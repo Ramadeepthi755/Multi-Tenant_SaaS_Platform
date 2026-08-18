@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.workforce.hrm.enums.EmployeeStatus;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "employees")
 public class Employee {
@@ -69,7 +69,11 @@ public class Employee {
 	@JsonIgnore
 	@OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<EmployeeDocument> documents = new ArrayList<>();
-
+	
+	@JsonIgnore
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "company_id", nullable = false)
+	private Company company;
 	public Employee() {
 	}
 
@@ -214,5 +218,12 @@ public class Employee {
 
 	public void setDocuments(List<EmployeeDocument> documents) {
 	    this.documents = documents;
+	}
+	public Company getCompany() {
+	    return company;
+	}
+
+	public void setCompany(Company company) {
+	    this.company = company;
 	}
 }

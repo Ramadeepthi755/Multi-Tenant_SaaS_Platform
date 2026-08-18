@@ -1,94 +1,264 @@
 package com.workforce.hrm.controller;
 
-import com.workforce.hrm.dto.request.ChangePasswordRequest;
-import com.workforce.hrm.dto.request.UserRequestDTO;
-import com.workforce.hrm.dto.response.UserResponseDTO;
-import com.workforce.hrm.service.UserService;
+import java.util.List;
 
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.workforce.hrm.dto.request.ChangePasswordRequest;
+import com.workforce.hrm.dto.request.UserRequestDTO;
+import com.workforce.hrm.dto.response.UserResponse;
+import com.workforce.hrm.service.UserService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
 public class UserController {
 
-	private UserService userService;
+    private final UserService userService;
 
-	public UserController(UserService userService) {
-		this.userService = userService;
-	}
 
-	// Create User
-	@PostMapping
-	public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO request) {
+    public UserController(
+            UserService userService) {
 
-		return new ResponseEntity<>(userService.createUser(request), HttpStatus.CREATED);
-	}
+        this.userService = userService;
+    }
 
-	// Get All Users
-	@GetMapping
-	public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
 
-		return ResponseEntity.ok(userService.getAllUsers());
-	}
+    // =========================================================
+    // CREATE USER
+    // =========================================================
 
-	// Get User By Id
-	@GetMapping("/{id}")
-	public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+    @PostMapping
+    @PreAuthorize("hasAuthority('USER_CREATE')")
+    public ResponseEntity<UserResponse>
+            createUser(
+                    @Valid @RequestBody
+                    UserRequestDTO request) {
 
-		return ResponseEntity.ok(userService.getUserById(id));
-	}
+        UserResponse response =
+                userService.createUser(request);
 
-	// Update User
-	@PutMapping("/{id}")
-	public ResponseEntity<UserResponseDTO> updateUser(@Valid @PathVariable Long id,
-			@RequestBody UserRequestDTO request) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
 
-		return ResponseEntity.ok(userService.updateUser(id, request));
-	}
 
-	// Delete User
-	@DeleteMapping("/{id}")
-	public ResponseEntity<String> deleteUser(@PathVariable Long id) {
+    // =========================================================
+    // GET ALL USERS
+    // =========================================================
 
-		userService.deleteUser(id);
+    @GetMapping
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<List<UserResponse>>
+            getAllUsers() {
 
-		return ResponseEntity.ok("User Deleted Successfully");
-	}
+        List<UserResponse> users =
+                userService.getAllUsers();
 
-	// Lock User
-	@PutMapping("/{id}/lock")
-	public ResponseEntity<String> lockUser(@PathVariable Long id) {
+        return ResponseEntity.ok(users);
+    }
 
-		userService.lockUser(id);
 
-		return ResponseEntity.ok("User Locked Successfully");
-	}
+    // =========================================================
+    // GET CURRENT LOGGED-IN USER
+    // =========================================================
+    //
+    // IMPORTANT:
+    //
+    // This endpoint MUST be declared before:
+    //
+    // @GetMapping("/{id}")
+    //
+    // Otherwise /me can be interpreted as an ID.
+    //
+    // =========================================================
 
-	// Unlock User
-	@PutMapping("/{id}/unlock")
-	public ResponseEntity<String> unlockUser(@PathVariable Long id) {
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserResponse>
+            getCurrentUser(
+                    Authentication authentication) {
 
-		userService.unlockUser(id);
+        UserResponse response =
+                userService.getCurrentUser(
+                        authentication.getName());
 
-		return ResponseEntity.ok("User Unlocked Successfully");
-	}
+        return ResponseEntity.ok(response);
+    }
 
-	@PutMapping("/change-password")
-	public ResponseEntity<String> changePassword(@Valid Authentication authentication,
-			@RequestBody ChangePasswordRequest request) {
 
-		userService.changePassword(authentication.getName(), request);
+    // =========================================================
+    // GET USER BY ID
+    // =========================================================
 
-		return ResponseEntity.ok("Password Changed Successfully");
-	}
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<UserResponse>
+            getUserById(
+                    @PathVariable Long id) {
+
+        UserResponse response =
+                userService.getUserById(id);
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    // =========================================================
+    // UPDATE USER
+    // =========================================================
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public ResponseEntity<UserResponse>
+            updateUser(
+                    @PathVariable Long id,
+                    @Valid @RequestBody
+                    UserRequestDTO request) {
+
+        UserResponse response =
+                userService.updateUser(
+                        id,
+                        request);
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    // =========================================================
+    // DELETE USER
+    // =========================================================
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_DELETE')")
+    public ResponseEntity<String>
+            deleteUser(
+                    @PathVariable Long id) {
+
+        userService.deleteUser(id);
+
+        return ResponseEntity.ok(
+                "User Deleted Successfully");
+    }
+
+
+    // =========================================================
+    // LOCK USER
+    // =========================================================
+
+    @PutMapping("/{id}/lock")
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public ResponseEntity<String>
+            lockUser(
+                    @PathVariable Long id) {
+
+        userService.lockUser(id);
+
+        return ResponseEntity.ok(
+                "User Locked Successfully");
+    }
+
+
+    // =========================================================
+    // UNLOCK USER
+    // =========================================================
+
+    @PutMapping("/{id}/unlock")
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public ResponseEntity<String>
+            unlockUser(
+                    @PathVariable Long id) {
+
+        userService.unlockUser(id);
+
+        return ResponseEntity.ok(
+                "User Unlocked Successfully");
+    }
+
+
+    // =========================================================
+    // CHANGE OWN PASSWORD
+    // =========================================================
+
+    @PutMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String>
+            changePassword(
+                    Authentication authentication,
+                    @Valid @RequestBody
+                    ChangePasswordRequest request) {
+
+        userService.changePassword(
+                authentication.getName(),
+                request);
+
+        return ResponseEntity.ok(
+                "Password Changed Successfully");
+    }
+ // =========================================================
+ // UPLOAD OWN PROFILE PHOTO
+ // =========================================================
+
+ @PostMapping(
+         value = "/me/profile-photo",
+         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+ )
+ @PreAuthorize("isAuthenticated()")
+ public ResponseEntity<String> uploadProfilePhoto(
+         Authentication authentication,
+         @RequestParam("file") MultipartFile file) {
+
+     String fileName =
+             userService.uploadProfilePhoto(
+                     authentication.getName(),
+                     file);
+
+     return ResponseEntity.ok(fileName);
+ }
+
+
+ // =========================================================
+ // GET OWN PROFILE PHOTO
+ // =========================================================
+
+ @GetMapping("/me/profile-photo")
+ @PreAuthorize("isAuthenticated()")
+ public ResponseEntity<Resource> getProfilePhoto(
+         Authentication authentication) {
+
+     String fileName =
+             userService.getProfilePhoto(
+                     authentication.getName());
+
+     Resource resource =
+             userService.loadProfilePhoto(
+                     fileName);
+
+     return ResponseEntity.ok()
+             .contentType(
+                     MediaTypeFactory
+                             .getMediaType(
+                                     fileName)
+                             .orElse(
+                                     MediaType.APPLICATION_OCTET_STREAM))
+             .body(resource);
+ }
 }

@@ -1,163 +1,731 @@
 package com.workforce.hrm.service.impl;
 
-import com.workforce.hrm.dto.request.CompanyRequestDTO;
-import com.workforce.hrm.dto.response.CompanyResponseDTO;
-import com.workforce.hrm.entity.Company;
-import com.workforce.hrm.exception.ResourceNotFoundException;
-import com.workforce.hrm.repository.CompanyRepository;
-import com.workforce.hrm.service.CompanyService;
-
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.workforce.hrm.dto.request.CompanyRequestDTO;
+import com.workforce.hrm.dto.response.CompanyResponseDTO;
+
+import com.workforce.hrm.entity.Company;
+import com.workforce.hrm.entity.User;
+
+import com.workforce.hrm.enums.CompanyStatus;
+
+import com.workforce.hrm.exception.ResourceNotFoundException;
+
+import com.workforce.hrm.mapper.CompanyMapper;
+
+import com.workforce.hrm.repository.CompanyRepository;
+import com.workforce.hrm.repository.UserRepository;
+
+import com.workforce.hrm.service.AuditLogService;
+import com.workforce.hrm.service.CompanyService;
+
 
 @Service
+@Transactional
 public class CompanyServiceImpl implements CompanyService {
 
-	private static final Logger log = LoggerFactory.getLogger(CompanyServiceImpl.class);
+    private static final Logger log =
+            LoggerFactory.getLogger(CompanyServiceImpl.class);
 
-	@Autowired
-	private CompanyRepository companyRepository;
+    private final CompanyRepository companyRepository;
 
-	@Override
-	public CompanyResponseDTO createCompany(CompanyRequestDTO request) {
+    private final UserRepository userRepository;
 
-		log.info("Creating Company : {}", request.getCompanyName());
+    private final AuditLogService auditLogService;
 
-		if (companyRepository.existsByCompanyCode(request.getCompanyCode())) {
 
-			log.warn("Company Code Already Exists : {}", request.getCompanyCode());
+    public CompanyServiceImpl(
+            CompanyRepository companyRepository,
+            UserRepository userRepository,
+            AuditLogService auditLogService) {
 
-			throw new RuntimeException("Company Code Already Exists");
-		}
+        this.companyRepository = companyRepository;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
 
-		Company company = new Company();
 
-		company.setCompanyName(request.getCompanyName());
-		company.setCompanyCode(request.getCompanyCode());
-		company.setEmail(request.getEmail());
-		company.setPhone(request.getPhone());
-		company.setActive(true);
+    // =========================================================
+    // CREATE COMPANY
+    // =========================================================
 
-		Company savedCompany = companyRepository.save(company);
+    @Override
+    public CompanyResponseDTO createCompany(
+            CompanyRequestDTO request) {
 
-		log.info("Company Created Successfully. ID : {}", savedCompany.getId());
+        log.info(
+                "Creating company: {}",
+                request.getCompanyName()
+        );
 
-		CompanyResponseDTO response = new CompanyResponseDTO();
+        // Only SUPER_ADMIN can create a company
+        if (!isSuperAdmin()) {
 
-		response.setId(savedCompany.getId());
-		response.setCompanyName(savedCompany.getCompanyName());
-		response.setCompanyCode(savedCompany.getCompanyCode());
-		response.setEmail(savedCompany.getEmail());
-		response.setPhone(savedCompany.getPhone());
+            throw new AccessDeniedException(
+                    "Only SUPER_ADMIN can create a company."
+            );
+        }
 
-		return response;
-	}
+        // Company code duplicate check
+        if (companyRepository.existsByCompanyCode(
+                request.getCompanyCode())) {
 
-	@Override
-	public Page<CompanyResponseDTO> getAllCompanies(Pageable pageable) {
+            log.warn(
+                    "Company code already exists: {}",
+                    request.getCompanyCode()
+            );
 
-		log.info("Fetching Companies Page : {}", pageable.getPageNumber());
+            throw new IllegalArgumentException(
+                    "Company Code Already Exists"
+            );
+        }
 
-		Page<Company> companies = companyRepository.findAll(pageable);
+        // Create entity
+        Company company =
+                CompanyMapper.toEntity(request);
 
-		return companies.map(company -> {
+        /*
+         * New companies always start ACTIVE.
+         */
+        company.setActive(true);
 
-			CompanyResponseDTO response = new CompanyResponseDTO();
+        company.setStatus(
+                CompanyStatus.ACTIVE
+        );
 
-			response.setId(company.getId());
-			response.setCompanyName(company.getCompanyName());
-			response.setCompanyCode(company.getCompanyCode());
-			response.setEmail(company.getEmail());
-			response.setPhone(company.getPhone());
+        company =
+                companyRepository.save(company);
 
-			return response;
-		});
-	}
+        // Audit
+        saveAudit(
+                "CREATE",
+                "Created Company : "
+                        + company.getCompanyName()
+        );
 
-	@Override
-	public CompanyResponseDTO getCompanyById(Long id) {
+        log.info(
+                "Company created successfully: {}",
+                company.getCompanyName()
+        );
 
-		log.info("Fetching Company ID : {}", id);
+        return CompanyMapper.toResponseDTO(company);
+    }
 
-		Company company = companyRepository.findById(id).orElseThrow(() -> {
 
-			log.error("Company Not Found ID : {}", id);
+    // =========================================================
+    // GET ALL COMPANIES — PAGINATED + SEARCH
+    // =========================================================
 
-			return new ResourceNotFoundException("Company Not Found");
-		});
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CompanyResponseDTO> getAllCompanies(
+            String search,
+            Pageable pageable) {
 
-		log.info("Company Found : {}", company.getCompanyName());
+        log.info(
+                "Fetching companies. Page: {}, Search: '{}'",
+                pageable.getPageNumber(),
+                search
+        );
 
-		CompanyResponseDTO response = new CompanyResponseDTO();
 
-		response.setId(company.getId());
-		response.setCompanyName(company.getCompanyName());
-		response.setCompanyCode(company.getCompanyCode());
-		response.setEmail(company.getEmail());
-		response.setPhone(company.getPhone());
+        // -----------------------------------------------------
+        // SUPER ADMIN
+        // -----------------------------------------------------
 
-		return response;
-	}
+        if (isSuperAdmin()) {
 
-	@Override
-	public CompanyResponseDTO updateCompany(Long id, CompanyRequestDTO request) {
+            Page<Company> companies;
 
-		log.info("Updating Company ID : {}", id);
+            /*
+             * No search
+             */
+            if (search == null || search.trim().isEmpty()) {
 
-		Company company = companyRepository.findById(id).orElseThrow(() -> {
+                companies =
+                        companyRepository.findAll(pageable);
 
-			log.error("Company Not Found ID : {}", id);
+            }
+            /*
+             * Search requested
+             */
+            else {
 
-			return new ResourceNotFoundException("Company Not Found");
-		});
+                companies =
+                        companyRepository.searchCompanies(
+                                search.trim(),
+                                pageable
+                        );
+            }
 
-		company.setCompanyName(request.getCompanyName());
-		company.setCompanyCode(request.getCompanyCode());
-		company.setEmail(request.getEmail());
-		company.setPhone(request.getPhone());
+            return companies.map(
+                    CompanyMapper::toResponseDTO
+            );
+        }
 
-		Company updatedCompany = companyRepository.save(company);
 
-		log.info("Company Updated Successfully. ID : {}", updatedCompany.getId());
+        // -----------------------------------------------------
+        // NORMAL TENANT USER
+        // -----------------------------------------------------
 
-		CompanyResponseDTO response = new CompanyResponseDTO();
+        Long companyId =
+                getCurrentUserCompanyId();
 
-		response.setId(updatedCompany.getId());
-		response.setCompanyName(updatedCompany.getCompanyName());
-		response.setCompanyCode(updatedCompany.getCompanyCode());
-		response.setEmail(updatedCompany.getEmail());
-		response.setPhone(updatedCompany.getPhone());
+        if (companyId == null) {
 
-		return response;
-	}
+            throw new AccessDeniedException(
+                    "User is not associated with a company."
+            );
+        }
 
-	@Override
-	public void deleteCompany(Long id) {
 
-		log.warn("Deleting Company ID : {}", id);
+        /*
+         * JpaRepository.findById() does NOT accept Pageable.
+         *
+         * Therefore:
+         * 1. Find the company
+         * 2. Check search
+         * 3. Return a Page containing that company
+         */
 
-		Company company = companyRepository.findById(id).orElseThrow(() -> {
+        Company company =
+                companyRepository
+                        .findById(companyId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Company Not Found"
+                                )
+                        );
 
-			log.error("Company Not Found ID : {}", id);
 
-			return new ResourceNotFoundException("Company Not Found");
-		});
+        // -----------------------------------------------------
+        // SEARCH FOR TENANT USER
+        // -----------------------------------------------------
 
-		companyRepository.delete(company);
+        if (search != null
+                && !search.trim().isEmpty()) {
 
-		log.info("Company Deleted Successfully. ID : {}", id);
-	}
+            String keyword =
+                    search.trim().toLowerCase();
 
-	@Override
-	public List<CompanyResponseDTO> getAllCompanies() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+            boolean matches =
+                    containsIgnoreCase(
+                            company.getCompanyName(),
+                            keyword
+                    )
+                    || containsIgnoreCase(
+                            company.getCompanyCode(),
+                            keyword
+                    )
+                    || containsIgnoreCase(
+                            company.getEmail(),
+                            keyword
+                    )
+                    || containsIgnoreCase(
+                            company.getPhone(),
+                            keyword
+                    );
+
+            /*
+             * Search does not match the user's company.
+             */
+            if (!matches) {
+
+                return Page.empty(pageable);
+            }
+        }
+
+
+        // -----------------------------------------------------
+        // RETURN SINGLE COMPANY AS PAGE
+        // -----------------------------------------------------
+
+        CompanyResponseDTO response =
+                CompanyMapper.toResponseDTO(company);
+
+        return new PageImpl<>(
+                List.of(response),
+                pageable,
+                1
+        );
+    }
+
+
+    // =========================================================
+    // GET ALL COMPANIES — NON PAGINATED
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CompanyResponseDTO> getAllCompanies() {
+
+        log.info(
+                "Fetching all accessible companies"
+        );
+
+
+        // SUPER ADMIN
+        if (isSuperAdmin()) {
+
+            return companyRepository
+                    .findAll()
+                    .stream()
+                    .map(
+                            CompanyMapper::toResponseDTO
+                    )
+                    .toList();
+        }
+
+
+        // TENANT USER
+
+        Long companyId =
+                getCurrentUserCompanyId();
+
+        if (companyId == null) {
+
+            throw new AccessDeniedException(
+                    "User is not associated with a company."
+            );
+        }
+
+
+        return companyRepository
+                .findById(companyId)
+                .map(
+                        company ->
+                                List.of(
+                                        CompanyMapper
+                                                .toResponseDTO(
+                                                        company
+                                                )
+                                )
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Company Not Found"
+                        )
+                );
+    }
+
+
+    // =========================================================
+    // GET COMPANY BY ID
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public CompanyResponseDTO getCompanyById(
+            Long id) {
+
+        log.info(
+                "Fetching company ID: {}",
+                id
+        );
+
+        validateCompanyAccess(id);
+
+        Company company =
+                findCompany(id);
+
+        return CompanyMapper.toResponseDTO(company);
+    }
+
+
+    // =========================================================
+    // UPDATE COMPANY
+    // =========================================================
+
+    @Override
+    public CompanyResponseDTO updateCompany(
+            Long id,
+            CompanyRequestDTO request) {
+
+        log.info(
+                "Updating company ID: {}",
+                id
+        );
+
+        validateCompanyAccess(id);
+
+        Company company =
+                findCompany(id);
+
+
+        /*
+         * Prevent company-code collision
+         * when changing company code.
+         */
+        if (!company
+                .getCompanyCode()
+                .equals(request.getCompanyCode())
+                && companyRepository
+                        .existsByCompanyCode(
+                                request.getCompanyCode()
+                        )) {
+
+            throw new IllegalArgumentException(
+                    "Company Code Already Exists"
+            );
+        }
+
+
+        CompanyMapper.updateEntity(
+                company,
+                request
+        );
+
+        company =
+                companyRepository.save(company);
+
+
+        // Audit
+        saveAudit(
+                "UPDATE",
+                "Updated Company : "
+                        + company.getCompanyName()
+        );
+
+        log.info(
+                "Company updated successfully: {}",
+                company.getCompanyName()
+        );
+
+        return CompanyMapper.toResponseDTO(company);
+    }
+
+
+    // =========================================================
+    // ACTIVATE COMPANY
+    // =========================================================
+
+    @Override
+    public CompanyResponseDTO activateCompany(
+            Long id) {
+
+        log.info(
+                "Activating company ID: {}",
+                id
+        );
+
+        validateCompanyAccess(id);
+
+        Company company =
+                findCompany(id);
+
+        company.setActive(true);
+
+        company.setStatus(
+                CompanyStatus.ACTIVE
+        );
+
+        company =
+                companyRepository.save(company);
+
+
+        // Audit
+        saveAudit(
+                "ACTIVATE",
+                "Activated Company : "
+                        + company.getCompanyName()
+        );
+
+        log.info(
+                "Company activated successfully: {}",
+                company.getCompanyName()
+        );
+
+        return CompanyMapper.toResponseDTO(company);
+    }
+
+
+    // =========================================================
+    // DEACTIVATE COMPANY
+    // =========================================================
+
+    @Override
+    public CompanyResponseDTO deactivateCompany(
+            Long id) {
+
+        log.info(
+                "Deactivating company ID: {}",
+                id
+        );
+
+        validateCompanyAccess(id);
+
+        Company company =
+                findCompany(id);
+
+        company.setActive(false);
+
+        company.setStatus(
+                CompanyStatus.INACTIVE
+        );
+
+        company =
+                companyRepository.save(company);
+
+
+        // Audit
+        saveAudit(
+                "DEACTIVATE",
+                "Deactivated Company : "
+                        + company.getCompanyName()
+        );
+
+        log.info(
+                "Company deactivated successfully: {}",
+                company.getCompanyName()
+        );
+
+        return CompanyMapper.toResponseDTO(company);
+    }
+
+
+    // =========================================================
+    // DELETE COMPANY
+    // =========================================================
+
+    @Override
+    public void deleteCompany(
+            Long id) {
+
+        log.warn(
+                "Deleting company ID: {}",
+                id
+        );
+
+
+        /*
+         * Only SUPER_ADMIN can delete
+         * a company.
+         */
+        if (!isSuperAdmin()) {
+
+            throw new AccessDeniedException(
+                    "Only SUPER_ADMIN can delete a company."
+            );
+        }
+
+        Company company =
+                findCompany(id);
+
+
+        companyRepository.delete(company);
+
+
+        // Audit
+        saveAudit(
+                "DELETE",
+                "Deleted Company : "
+                        + company.getCompanyName()
+        );
+
+        log.info(
+                "Company deleted successfully: {}",
+                id
+        );
+    }
+
+
+    // =========================================================
+    // FIND COMPANY
+    // =========================================================
+
+    private Company findCompany(
+            Long id) {
+
+        return companyRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Company Not Found"
+                        )
+                );
+    }
+
+
+    // =========================================================
+    // TENANT ACCESS
+    // =========================================================
+
+    private void validateCompanyAccess(
+            Long requestedCompanyId) {
+
+        /*
+         * SUPER_ADMIN can access every company.
+         */
+        if (isSuperAdmin()) {
+            return;
+        }
+
+
+        Long currentCompanyId =
+                getCurrentUserCompanyId();
+
+        if (currentCompanyId == null) {
+
+            throw new AccessDeniedException(
+                    "User is not associated with a company."
+            );
+        }
+
+
+        if (!currentCompanyId.equals(
+                requestedCompanyId)) {
+
+            throw new AccessDeniedException(
+                    "You do not have access to this company."
+            );
+        }
+    }
+
+
+    // =========================================================
+    // CURRENT USER COMPANY
+    // =========================================================
+
+    private Long getCurrentUserCompanyId() {
+
+        String email =
+                getCurrentUserEmail();
+
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new AccessDeniedException(
+                                        "Authenticated user not found."
+                                )
+                        );
+
+
+        if (user.getCompany() == null) {
+            return null;
+        }
+
+
+        return user
+                .getCompany()
+                .getId();
+    }
+
+
+    // =========================================================
+    // CURRENT USER EMAIL
+    // =========================================================
+
+    private String getCurrentUserEmail() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new AccessDeniedException(
+                    "User is not authenticated."
+            );
+        }
+
+
+        return authentication.getName();
+    }
+
+
+    // =========================================================
+    // SUPER ADMIN CHECK
+    // =========================================================
+
+    private boolean isSuperAdmin() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+
+        if (authentication == null) {
+            return false;
+        }
+
+
+        return authentication
+                .getAuthorities()
+                .stream()
+                .anyMatch(
+                        authority ->
+                                "ROLE_SUPER_ADMIN"
+                                        .equals(
+                                                authority
+                                                        .getAuthority()
+                                        )
+                );
+    }
+
+
+    // =========================================================
+    // SEARCH HELPER
+    // =========================================================
+
+    private boolean containsIgnoreCase(
+            String value,
+            String keyword) {
+
+        return value != null
+                && value
+                        .toLowerCase()
+                        .contains(keyword);
+    }
+
+
+    // =========================================================
+    // AUDIT
+    // =========================================================
+
+    private void saveAudit(
+            String action,
+            String description) {
+
+        try {
+
+            auditLogService.saveLog(
+                    action,
+                    "COMPANY",
+                    description,
+                    getCurrentUserEmail()
+            );
+
+        } catch (Exception ex) {
+
+            /*
+             * Audit failure should not make
+             * the main company operation fail.
+             */
+            log.error(
+                    "Audit log failed: {}",
+                    ex.getMessage(),
+                    ex
+            );
+        }
+    }
 }

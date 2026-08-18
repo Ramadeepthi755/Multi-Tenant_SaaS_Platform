@@ -2,25 +2,80 @@ package com.workforce.hrm.service;
 
 import java.time.LocalDate;
 import java.util.List;
-import com.workforce.hrm.entity.Attendance;
+
+import com.workforce.hrm.dto.request.AttendanceRequestDTO;
+import com.workforce.hrm.dto.response.AttendanceResponseDTO;
 
 public interface AttendanceService {
 
-	Attendance createAttendance(Attendance attendance);
+    // =========================================================
+    // CREATE
+    // =========================================================
 
-	List<Attendance> getAllAttendance();
+    AttendanceResponseDTO createAttendance(
+            AttendanceRequestDTO request);
 
-	Attendance getAttendanceById(Long id);
 
-	Attendance updateAttendance(Long id, Attendance attendance);
+    // =========================================================
+    // GET ALL
+    // =========================================================
 
-	void deleteAttendance(Long id);
-	
-	List<Attendance> getAttendanceByEmployee(Long employeeId);
+    List<AttendanceResponseDTO> getAllAttendance();
 
-	List<Attendance> getAttendanceByDate(LocalDate date);
 
-	Attendance checkIn(Long employeeId);
+    // =========================================================
+    // GET BY ID
+    // =========================================================
 
-	Attendance checkOut(Long employeeId);
+    AttendanceResponseDTO getAttendanceById(
+            Long id);
+
+
+    // =========================================================
+    // UPDATE
+    // =========================================================
+
+    AttendanceResponseDTO updateAttendance(
+            Long id,
+            AttendanceRequestDTO request);
+
+
+    // =========================================================
+    // DELETE
+    // =========================================================
+
+    void deleteAttendance(
+            Long id);
+
+
+    // =========================================================
+    // GET BY EMPLOYEE
+    // =========================================================
+
+    List<AttendanceResponseDTO> getAttendanceByEmployee(
+            Long employeeId);
+
+
+    // =========================================================
+    // GET BY DATE
+    // =========================================================
+
+    List<AttendanceResponseDTO> getAttendanceByDate(
+            LocalDate date);
+
+
+    // =========================================================
+    // CHECK IN
+    // =========================================================
+
+    AttendanceResponseDTO checkIn(
+            Long employeeId);
+
+
+    // =========================================================
+    // CHECK OUT
+    // =========================================================
+
+    AttendanceResponseDTO checkOut(
+            Long employeeId);
 }

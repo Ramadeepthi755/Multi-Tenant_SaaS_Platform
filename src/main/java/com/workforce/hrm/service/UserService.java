@@ -3,29 +3,111 @@ package com.workforce.hrm.service;
 import com.workforce.hrm.dto.request.ChangePasswordRequest;
 import com.workforce.hrm.dto.request.ResetPasswordRequest;
 import com.workforce.hrm.dto.request.UserRequestDTO;
-import com.workforce.hrm.dto.response.UserResponseDTO;
-
+import com.workforce.hrm.dto.response.UserResponse;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
-
+import org.springframework.core.io.Resource;
 public interface UserService {
 
-	UserResponseDTO createUser(UserRequestDTO request);
+    // =========================================================
+    // CREATE USER
+    // =========================================================
 
-	List<UserResponseDTO> getAllUsers();
+    UserResponse createUser(
+            UserRequestDTO request);
 
-	UserResponseDTO getUserById(Long id);
 
-	UserResponseDTO updateUser(Long id, UserRequestDTO request);
+    // =========================================================
+    // GET ALL USERS
+    // =========================================================
 
-	void changePassword(String email, ChangePasswordRequest request);
+    List<UserResponse> getAllUsers();
 
-	void deleteUser(Long id);
 
-	void lockUser(Long id);
+    // =========================================================
+    // GET USER BY ID
+    // =========================================================
 
-	void unlockUser(Long id);
+    UserResponse getUserById(
+            Long id);
 
-	void forgotPassword(String email);
 
-	void resetPassword(ResetPasswordRequest request);
+    // =========================================================
+    // GET CURRENT LOGGED-IN USER
+    // =========================================================
+
+    UserResponse getCurrentUser(
+            String email);
+
+
+    // =========================================================
+    // UPDATE USER
+    // =========================================================
+
+    UserResponse updateUser(
+            Long id,
+            UserRequestDTO request);
+
+
+    // =========================================================
+    // DELETE USER
+    // =========================================================
+
+    void deleteUser(
+            Long id);
+
+
+    // =========================================================
+    // LOCK USER
+    // =========================================================
+
+    void lockUser(
+            Long id);
+
+
+    // =========================================================
+    // UNLOCK USER
+    // =========================================================
+
+    void unlockUser(
+            Long id);
+
+
+    // =========================================================
+    // CHANGE PASSWORD
+    // =========================================================
+
+    void changePassword(
+            String email,
+            ChangePasswordRequest request);
+
+
+    // =========================================================
+    // FORGOT PASSWORD
+    // =========================================================
+
+    void forgotPassword(
+            String email);
+
+
+    // =========================================================
+    // RESET PASSWORD
+    // =========================================================
+
+    void resetPassword(
+            ResetPasswordRequest request);
+    
+ // =========================================================
+ // PROFILE PHOTO
+ // =========================================================
+
+ String uploadProfilePhoto(
+         String email,
+         MultipartFile file);
+
+ String getProfilePhoto(
+         String email);
+
+Resource loadProfilePhoto(
+        String fileName);
 }

@@ -1,19 +1,69 @@
 package com.workforce.hrm.repository;
 
-import com.workforce.hrm.entity.User;
-import com.workforce.hrm.enums.Role;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.workforce.hrm.entity.User;
+
+@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-	Optional<User> findByEmail(String email);
-	boolean existsByEmail(String email);
+    // =========================================================
+    // FIND USER BY EMAIL
+    // =========================================================
 
-	List<User> findByRole(Role role);
+    Optional<User> findByEmail(String email);
 
-	List<User> findByActiveTrue();
+
+    // =========================================================
+    // CHECK EMAIL EXISTS
+    // =========================================================
+
+    boolean existsByEmail(String email);
+
+
+    // =========================================================
+    // FIND ALL USERS OF A COMPANY
+    // =========================================================
+    //
+    // Explicit JPQL is intentionally used instead of relying
+    // on Spring Data nested-property parsing.
+    //
+    // User -> company -> id
+    //
+
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.company.id = :companyId
+            """)
+    List<User> findByCompanyId(
+            @Param("companyId") Long companyId
+    );
+
+
+    // =========================================================
+    // FIND USER BY USER ID + COMPANY ID
+    // =========================================================
+    //
+    // This provides tenant isolation.
+    //
+    // Company A cannot access Company B user.
+    //
+
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.userId = :userId
+              AND u.company.id = :companyId
+            """)
+    Optional<User> findByUserIdAndCompanyId(
+            @Param("userId") Long userId,
+            @Param("companyId") Long companyId
+    );
 }

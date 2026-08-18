@@ -1,18 +1,21 @@
 package com.workforce.hrm.service;
 
 import java.util.List;
-import com.workforce.hrm.entity.Designation;
+
+import com.workforce.hrm.dto.request.DesignationRequestDTO;
+import com.workforce.hrm.dto.response.DesignationResponseDTO;
 
 public interface DesignationService {
 
-	Designation createDesignation(Designation designation);
+    DesignationResponseDTO createDesignation(DesignationRequestDTO request);
 
-	List<Designation> getAllDesignations();
+    List<DesignationResponseDTO> getAllDesignations();
 
-	Designation getDesignationById(Long id);
+    DesignationResponseDTO getDesignationById(Long id);
 
-	Designation updateDesignation(Long id, Designation designation);
+    DesignationResponseDTO updateDesignation(Long id, DesignationRequestDTO request);
 
-	void deleteDesignation(Long id);
-	List<Designation> getByDepartment(Long departmentId);
+    void deleteDesignation(Long id);
+
+    List<DesignationResponseDTO> getByDepartment(Long departmentId);
 }

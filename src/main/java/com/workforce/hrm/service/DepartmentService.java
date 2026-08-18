@@ -2,18 +2,20 @@ package com.workforce.hrm.service;
 
 import java.util.List;
 
-import com.workforce.hrm.entity.Department;
+import com.workforce.hrm.dto.request.DepartmentRequestDTO;
+import com.workforce.hrm.dto.response.DepartmentResponseDTO;
 
 public interface DepartmentService {
 
-	Department createDepartment(Department department);
+    DepartmentResponseDTO createDepartment(DepartmentRequestDTO request);
 
-	List<Department> getAllDepartments();
+    List<DepartmentResponseDTO> getAllDepartments();
 
-	Department getDepartmentById(Long id);
+    DepartmentResponseDTO getDepartmentById(Long id);
 
-	Department updateDepartment(Long id, Department department);
+    DepartmentResponseDTO updateDepartment(Long id, DepartmentRequestDTO request);
 
-	void deleteDepartment(Long id);
-	List<Department> getDepartmentsByCompany(Long companyId);
+    void deleteDepartment(Long id);
+
+    List<DepartmentResponseDTO> getDepartmentsByCompany(Long companyId);
 }

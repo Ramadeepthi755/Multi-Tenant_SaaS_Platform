@@ -1,5 +1,7 @@
 package com.workforce.hrm.dto.request;
 
+import com.workforce.hrm.enums.CompanyStatus;
+
 import jakarta.validation.constraints.*;
 
 public class CompanyRequestDTO {
@@ -16,6 +18,8 @@ public class CompanyRequestDTO {
 
 	@Pattern(regexp = "^[0-9]{10}$", message = "Phone Number should contain 10 digits")
 	private String phone;
+	
+	private CompanyStatus status;
 
 	public CompanyRequestDTO() {
 	}
@@ -57,5 +61,12 @@ public class CompanyRequestDTO {
 
 	public void setPhone(String phone) {
 		this.phone = phone;
+	}
+	public CompanyStatus getStatus() {
+	    return status;
+	}
+
+	public void setStatus(CompanyStatus status) {
+	    this.status = status;
 	}
 }

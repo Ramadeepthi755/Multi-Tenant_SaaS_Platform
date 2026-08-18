@@ -8,60 +8,138 @@ import jakarta.persistence.*;
 @Table(name = "audit_logs")
 public class AuditLog {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+    // =========================================================
+    // PRIMARY KEY
+    // =========================================================
 
-	private String userEmail;
-
-	
-	private String AuditAction;
-
-	private String AuditModule;
-
-	private LocalDateTime timestamp;
-
-	public AuditLog() {
-	}
-
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public String getUserEmail() {
-		return userEmail;
-	}
-
-	public void setUserEmail(String userEmail) {
-		this.userEmail = userEmail;
-	}
-
-	public String getAuditAction() {
-		return AuditAction;
-	}
-
-	public void setAuditAction(String auditAction) {
-		AuditAction = auditAction;
-	}
-
-	public String getAuditModule() {
-		return AuditModule;
-	}
-
-	public void setAuditModule(String auditModule) {
-		AuditModule = auditModule;
-	}
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
 
-	public LocalDateTime getTimestamp() {
-		return timestamp;
-	}
+    // =========================================================
+    // USER INFORMATION
+    // =========================================================
 
-	public void setTimestamp(LocalDateTime timestamp) {
-		this.timestamp = timestamp;
-	}
+    private Long userId;
+
+    @Column(nullable = false)
+    private String userEmail;
+
+    @Column(nullable = false)
+    private Long companyId;
+
+
+    // =========================================================
+    // AUDIT INFORMATION
+    // =========================================================
+
+    @Column(nullable = false)
+    private String action;
+
+    @Column(nullable = false)
+    private String module;
+
+    @Column(length = 1000)
+    private String details;
+
+
+    // =========================================================
+    // REQUEST INFORMATION
+    // =========================================================
+
+    private String ipAddress;
+
+
+    // =========================================================
+    // TIMESTAMP
+    // =========================================================
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
+
+    public AuditLog() {
+    }
+
+
+    // =========================================================
+    // GETTERS & SETTERS
+    // =========================================================
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public String getModule() {
+        return module;
+    }
+
+    public void setModule(String module) {
+        this.module = module;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
