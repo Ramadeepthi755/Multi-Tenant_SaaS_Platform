@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 
 import UserList from "./UserList";
-import { getCompanies } from "../../services/companyService";
+import companyService from "../../services/companyService";
 
 const User = () => {
 
@@ -19,10 +19,16 @@ const User = () => {
 
     try {
 
-      const data = await getCompanies();
+      const data =
+        await companyService.getCompanies();
 
-      // Supports both Page<> and List<>
-      setCompanies(data.content || data);
+      setCompanies(
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.content)
+            ? data.content
+            : []
+      );
 
     } catch (error) {
 
@@ -30,6 +36,8 @@ const User = () => {
         "Failed to load companies",
         error
       );
+
+      setCompanies([]);
 
     } finally {
 

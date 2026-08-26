@@ -98,18 +98,6 @@ import usePermissions
 |--------------------------------------------------------------------------
 */
 
-/*
- * Backend response uses:
- *
- * designationId
- *
- * Older frontend code was using:
- *
- * id
- *
- * Support both so the UI doesn't break if an older response
- * is returned.
- */
 const getDesignationId = (
   designation
 ) => {
@@ -119,15 +107,10 @@ const getDesignationId = (
     designation?.id ??
     null
   );
+
 };
 
 
-/*
- * Department responses may use either:
- *
- * departmentId
- * id
- */
 const getDepartmentId = (
   department
 ) => {
@@ -137,42 +120,60 @@ const getDepartmentId = (
     department?.id ??
     null
   );
+
 };
 
 
-/*
- * Department response may expose company as:
- *
- * companyId
- * company.id
- */
+const getCompanyId = (
+  company
+) => {
+
+  return (
+    company?.companyId ??
+    company?.id ??
+    null
+  );
+
+};
+
+
 const getDepartmentCompanyId = (
   department
 ) => {
 
   return (
     department?.companyId ??
+    department?.company?.companyId ??
     department?.company?.id ??
     null
   );
+
 };
 
 
-/*
- * Company responses may use:
- *
- * id
- * companyId
- */
-const getCompanyId = (
+const getDepartmentName = (
+  department
+) => {
+
+  return (
+    department?.departmentName ??
+    department?.name ??
+    ""
+  );
+
+};
+
+
+const getCompanyName = (
   company
 ) => {
 
   return (
-    company?.id ??
-    company?.companyId ??
-    null
+    company?.companyName ??
+    company?.name ??
+    ""
   );
+
 };
 
 
@@ -180,29 +181,20 @@ const getCompanyId = (
 |--------------------------------------------------------------------------
 | NORMALIZE RESPONSE
 |--------------------------------------------------------------------------
-|
-| Current backend returns List<DesignationResponseDTO>.
-|
-| This also safely handles a Spring Page if the backend is later
-| upgraded to pagination.
-|
-|--------------------------------------------------------------------------
 */
 
 const normalizeDesignationResponse = (
   response
 ) => {
 
-  /*
-   * Array response
-   */
   if (
     Array.isArray(response)
   ) {
 
     return {
       content: response,
-      totalElements: response.length,
+      totalElements:
+        response.length,
       totalPages:
         response.length > 0
           ? 1
@@ -212,9 +204,6 @@ const normalizeDesignationResponse = (
   }
 
 
-  /*
-   * Spring Page response
-   */
   if (
     response &&
     Array.isArray(
@@ -251,6 +240,7 @@ const normalizeDesignationResponse = (
     totalElements: 0,
     totalPages: 0
   };
+
 };
 
 
@@ -280,6 +270,7 @@ const getDesignationErrorMessage = (
 
     fallback
   );
+
 };
 
 
@@ -336,6 +327,12 @@ const DesignationList = () => {
     error,
     setError
   ] = useState("");
+
+
+  const [
+    totalElements,
+    setTotalElements
+  ] = useState(0);
 
 
   /*
@@ -598,6 +595,7 @@ const DesignationList = () => {
           true
         );
 
+
         try {
 
           await Promise.all([
@@ -630,6 +628,273 @@ const DesignationList = () => {
 
   /*
   |--------------------------------------------------------------------------
+  | BUILD LOOKUP MAPS
+  |--------------------------------------------------------------------------
+  */
+
+  const departmentMap =
+    useMemo(() => {
+
+      const map =
+        new Map();
+
+
+      departments.forEach(
+        department => {
+
+          const id =
+            getDepartmentId(
+              department
+            );
+
+
+          if (
+            id !== null &&
+            id !== undefined
+          ) {
+
+            map.set(
+              String(id),
+              department
+            );
+
+          }
+
+        }
+      );
+
+
+      return map;
+
+    }, [
+      departments
+    ]);
+
+
+  const companyMap =
+    useMemo(() => {
+
+      const map =
+        new Map();
+
+
+      companies.forEach(
+        company => {
+
+          const id =
+            getCompanyId(
+              company
+            );
+
+
+          if (
+            id !== null &&
+            id !== undefined
+          ) {
+
+            map.set(
+              String(id),
+              company
+            );
+
+          }
+
+        }
+      );
+
+
+      return map;
+
+    }, [
+      companies
+    ]);
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | ENRICH DESIGNATIONS
+  |--------------------------------------------------------------------------
+  |
+  | This is the main fix.
+  |
+  | API:
+  |
+  | Designation
+  |    ↓ departmentId
+  | Department
+  |    ↓ companyId
+  | Company
+  |
+  | We put the resolved values back into the
+  | designation object before passing it to
+  | DesignationTable.
+  |
+  |--------------------------------------------------------------------------
+  */
+
+  const enrichDesignations = useCallback(
+    (
+      items
+    ) => {
+
+      return items.map(
+        designation => {
+
+          const currentDepartmentId =
+            designation?.departmentId ??
+            designation?.department?.departmentId ??
+            designation?.department?.id ??
+            null;
+
+
+          const department =
+            currentDepartmentId !== null
+              ? departmentMap.get(
+                  String(
+                    currentDepartmentId
+                  )
+                )
+              : null;
+
+
+          /*
+           * Resolve department name.
+           */
+
+          const departmentName =
+  (
+    designation?.departmentName ??
+    designation?.department?.departmentName ??
+    getDepartmentName(department)
+  ) || "—";
+
+
+          /*
+           * Resolve company ID.
+           */
+
+          let currentCompanyId =
+            designation?.companyId ??
+            designation?.company?.companyId ??
+            designation?.company?.id ??
+            getDepartmentCompanyId(
+              department
+            );
+
+
+          /*
+           * Resolve company object.
+           */
+
+          let company =
+            currentCompanyId !== null &&
+            currentCompanyId !== undefined
+              ? companyMap.get(
+                  String(
+                    currentCompanyId
+                  )
+                )
+              : null;
+
+
+          /*
+           * Fallback:
+           *
+           * Department may have companyName but
+           * not companyId.
+           */
+
+          if (
+            !company &&
+            department
+          ) {
+
+            const departmentCompanyName =
+              String(
+                department?.companyName ??
+                department?.company?.companyName ??
+                department?.company?.name ??
+                ""
+              )
+                .trim()
+                .toLowerCase();
+
+
+            if (
+              departmentCompanyName
+            ) {
+
+              company =
+                companies.find(
+                  item =>
+                    String(
+                      getCompanyName(
+                        item
+                      )
+                    )
+                      .trim()
+                      .toLowerCase() ===
+                    departmentCompanyName
+                ) ?? null;
+
+
+              if (company) {
+
+                currentCompanyId =
+                  getCompanyId(
+                    company
+                  );
+
+              }
+
+            }
+
+          }
+
+
+          /*
+           * Final company name.
+           */
+
+          const companyName =
+  (
+    designation?.companyName ??
+    designation?.company?.companyName ??
+    getCompanyName(company)
+  ) || "—";
+
+          return {
+
+            ...designation,
+
+            departmentId:
+              currentDepartmentId,
+
+            departmentName:
+              departmentName,
+
+            companyId:
+              currentCompanyId,
+
+            companyName:
+              companyName
+
+          };
+
+        }
+      );
+
+    },
+    [
+      departmentMap,
+      companyMap,
+      companies
+    ]
+  );
+
+
+  /*
+  |--------------------------------------------------------------------------
   | LOAD DESIGNATIONS
   |--------------------------------------------------------------------------
   */
@@ -644,15 +909,6 @@ const DesignationList = () => {
 
 
         try {
-
-          /*
-           * Current backend returns List.
-           *
-           * We still send the filters that our service
-           * supports. The service prevents unsupported
-           * pagination/sorting parameters from being
-           * treated as backend pagination.
-           */
 
           const response =
             await designationService
@@ -670,21 +926,23 @@ const DesignationList = () => {
             );
 
 
+          /*
+           * FIRST:
+           *
+           * Resolve Department + Company.
+           */
+
           let content =
-            normalized.content;
+            enrichDesignations(
+              normalized.content
+            );
 
 
           /*
-           * Client-side filtering is used here because
-           * the current Designation backend GET endpoint
-           * returns a List and does not yet implement
-           * search/status/company/department filtering.
-           */
-
-
-          /*
-           * SEARCH
-           */
+          |--------------------------------------------------------------------------
+          | SEARCH
+          |--------------------------------------------------------------------------
+          */
 
           if (
             search &&
@@ -701,31 +959,30 @@ const DesignationList = () => {
               content.filter(
                 designation => {
 
-                  const name =
-                    String(
-                      designation.designationName ||
-                      ""
-                    ).toLowerCase();
+                  const values = [
+
+                    designation.designationName,
+
+                    designation.designationCode,
+
+                    designation.description,
+
+                    designation.departmentName,
+
+                    designation.companyName
+
+                  ];
 
 
-                  const code =
-                    String(
-                      designation.designationCode ||
-                      ""
-                    ).toLowerCase();
-
-
-                  const description =
-                    String(
-                      designation.description ||
-                      ""
-                    ).toLowerCase();
-
-
-                  return (
-                    name.includes(keyword) ||
-                    code.includes(keyword) ||
-                    description.includes(keyword)
+                  return values.some(
+                    value =>
+                      String(
+                        value || ""
+                      )
+                        .toLowerCase()
+                        .includes(
+                          keyword
+                        )
                   );
 
                 }
@@ -735,8 +992,10 @@ const DesignationList = () => {
 
 
           /*
-           * STATUS
-           */
+          |--------------------------------------------------------------------------
+          | STATUS
+          |--------------------------------------------------------------------------
+          */
 
           if (status) {
 
@@ -767,10 +1026,10 @@ const DesignationList = () => {
 
 
           /*
-           * COMPANY
-           *
-           * Company is derived through Department.
-           */
+          |--------------------------------------------------------------------------
+          | COMPANY FILTER
+          |--------------------------------------------------------------------------
+          */
 
           if (companyId) {
 
@@ -778,37 +1037,10 @@ const DesignationList = () => {
               content.filter(
                 designation => {
 
-                  const designationDepartmentId =
-                    designation.departmentId ??
-                    designation.department?.id ??
-                    null;
-
-
-                  const department =
-                    departments.find(
-                      item =>
-                        String(
-                          getDepartmentId(
-                            item
-                          )
-                        ) ===
-                        String(
-                          designationDepartmentId
-                        )
-                    );
-
-
-                  const currentCompanyId =
-                    designation.companyId ??
-                    designation.company?.id ??
-                    getDepartmentCompanyId(
-                      department
-                    );
-
-
                   return (
                     String(
-                      currentCompanyId
+                      designation.companyId ??
+                      ""
                     ) ===
                     String(
                       companyId
@@ -822,8 +1054,10 @@ const DesignationList = () => {
 
 
           /*
-           * DEPARTMENT
-           */
+          |--------------------------------------------------------------------------
+          | DEPARTMENT FILTER
+          |--------------------------------------------------------------------------
+          */
 
           if (departmentId) {
 
@@ -831,15 +1065,10 @@ const DesignationList = () => {
               content.filter(
                 designation => {
 
-                  const currentDepartmentId =
-                    designation.departmentId ??
-                    designation.department?.id ??
-                    null;
-
-
                   return (
                     String(
-                      currentDepartmentId
+                      designation.departmentId ??
+                      ""
                     ) ===
                     String(
                       departmentId
@@ -853,11 +1082,10 @@ const DesignationList = () => {
 
 
           /*
-           * SORT
-           *
-           * We sort client-side because the current
-           * backend GET endpoint returns a List.
-           */
+          |--------------------------------------------------------------------------
+          | SORT
+          |--------------------------------------------------------------------------
+          */
 
           content =
             [...content].sort(
@@ -867,11 +1095,13 @@ const DesignationList = () => {
               ) => {
 
                 let firstValue;
+
                 let secondValue;
 
 
                 if (
-                  sortBy === "designationName"
+                  sortBy ===
+                  "designationName"
                 ) {
 
                   firstValue =
@@ -880,14 +1110,18 @@ const DesignationList = () => {
                       ""
                     ).toLowerCase();
 
+
                   secondValue =
                     String(
                       second.designationName ||
                       ""
                     ).toLowerCase();
 
-                } else if (
-                  sortBy === "designationCode"
+                }
+
+                else if (
+                  sortBy ===
+                  "designationCode"
                 ) {
 
                   firstValue =
@@ -896,14 +1130,18 @@ const DesignationList = () => {
                       ""
                     ).toLowerCase();
 
+
                   secondValue =
                     String(
                       second.designationCode ||
                       ""
                     ).toLowerCase();
 
-                } else if (
-                  sortBy === "status"
+                }
+
+                else if (
+                  sortBy ===
+                  "status"
                 ) {
 
                   firstValue =
@@ -912,13 +1150,16 @@ const DesignationList = () => {
                       ""
                     ).toLowerCase();
 
+
                   secondValue =
                     String(
                       second.status ||
                       ""
                     ).toLowerCase();
 
-                } else {
+                }
+
+                else {
 
                   firstValue =
                     Number(
@@ -926,6 +1167,7 @@ const DesignationList = () => {
                         first
                       ) || 0
                     );
+
 
                   secondValue =
                     Number(
@@ -942,7 +1184,10 @@ const DesignationList = () => {
                   secondValue
                 ) {
 
-                  return direction === "asc"
+                  return (
+                    direction ===
+                    "asc"
+                  )
                     ? -1
                     : 1;
 
@@ -954,7 +1199,10 @@ const DesignationList = () => {
                   secondValue
                 ) {
 
-                  return direction === "asc"
+                  return (
+                    direction ===
+                    "asc"
+                  )
                     ? 1
                     : -1;
 
@@ -968,9 +1216,10 @@ const DesignationList = () => {
 
 
           /*
-           * Since current backend returns a List,
-           * use the filtered list as one frontend page.
-           */
+          |--------------------------------------------------------------------------
+          | SAVE
+          |--------------------------------------------------------------------------
+          */
 
           setDesignations(
             content
@@ -1016,7 +1265,7 @@ const DesignationList = () => {
         departmentId,
         sortBy,
         direction,
-        departments
+        enrichDesignations
       ]
     );
 
@@ -1038,10 +1287,25 @@ const DesignationList = () => {
 
   useEffect(() => {
 
+    /*
+     * Wait for reference data before enriching
+     * designations.
+     */
+
+    if (
+      referenceLoading
+    ) {
+
+      return;
+
+    }
+
+
     loadDesignations();
 
   }, [
-    loadDesignations
+    loadDesignations,
+    referenceLoading
   ]);
 
 
@@ -1152,7 +1416,7 @@ const DesignationList = () => {
 
   /*
   |--------------------------------------------------------------------------
-  | RESET FILTERS
+  | RESET
   |--------------------------------------------------------------------------
   */
 
@@ -1225,6 +1489,7 @@ const DesignationList = () => {
       });
 
       return;
+
     }
 
 
@@ -1274,6 +1539,7 @@ const DesignationList = () => {
       return;
     }
 
+
     setFormOpen(false);
 
     setFormError("");
@@ -1298,12 +1564,9 @@ const DesignationList = () => {
 
     try {
 
-      /*
-       * CREATE
-       */
-
       if (
-        formMode === "create"
+        formMode ===
+        "create"
       ) {
 
         await designationService
@@ -1321,10 +1584,6 @@ const DesignationList = () => {
         });
 
       }
-
-      /*
-       * UPDATE
-       */
 
       else {
 
@@ -1421,6 +1680,7 @@ const DesignationList = () => {
       });
 
       return;
+
     }
 
 
@@ -1440,6 +1700,7 @@ const DesignationList = () => {
     if (deleteLoading) {
       return;
     }
+
 
     setDeleteOpen(false);
 
@@ -1467,6 +1728,7 @@ const DesignationList = () => {
       );
 
       return;
+
     }
 
 
@@ -1527,7 +1789,7 @@ const DesignationList = () => {
 
   /*
   |--------------------------------------------------------------------------
-  | STATUS CHANGE
+  | STATUS
   |--------------------------------------------------------------------------
   */
 
@@ -1552,6 +1814,7 @@ const DesignationList = () => {
       });
 
       return;
+
     }
 
 
@@ -1567,7 +1830,8 @@ const DesignationList = () => {
 
 
     const nextStatus =
-      currentStatus === "ACTIVE"
+      currentStatus ===
+      "ACTIVE"
         ? "INACTIVE"
         : "ACTIVE";
 
@@ -1577,8 +1841,7 @@ const DesignationList = () => {
       await designationService
         .updateStatus(
           designationId,
-          nextStatus,
-          designation
+          nextStatus
         );
 
 
@@ -1623,7 +1886,7 @@ const DesignationList = () => {
 
   /*
   |--------------------------------------------------------------------------
-  | FILTERED DEPARTMENTS
+  | FILTERED DEPARTMENTS FOR LIST FILTER
   |--------------------------------------------------------------------------
   */
 
@@ -1632,11 +1895,16 @@ const DesignationList = () => {
       ? departments.filter(
           department => {
 
+            const departmentCompanyId =
+              getDepartmentCompanyId(
+                department
+              );
+
+
             return (
               String(
-                getDepartmentCompanyId(
-                  department
-                )
+                departmentCompanyId ??
+                ""
               ) ===
               String(
                 companyId
@@ -1662,9 +1930,7 @@ const DesignationList = () => {
       }}
     >
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+      {/* HEADER */}
 
       <Stack
         direction={{
@@ -1731,9 +1997,7 @@ const DesignationList = () => {
       </Stack>
 
 
-      {/* =====================================================
-          ERROR
-      ===================================================== */}
+      {/* ERROR */}
 
       {error && (
 
@@ -1762,9 +2026,7 @@ const DesignationList = () => {
       )}
 
 
-      {/* =====================================================
-          STATISTICS
-      ===================================================== */}
+      {/* STATISTICS */}
 
       <Box
         sx={{
@@ -1940,9 +2202,7 @@ const DesignationList = () => {
       </Box>
 
 
-      {/* =====================================================
-          FILTER BAR
-      ===================================================== */}
+      {/* FILTERS */}
 
       <Paper
         elevation={0}
@@ -1980,7 +2240,7 @@ const DesignationList = () => {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search designations..."
+              placeholder="Search designations, departments or companies..."
               value={
                 searchInput
               }
@@ -2015,13 +2275,10 @@ const DesignationList = () => {
             }
             displayEmpty
             onChange={
-              event => {
-
+              event =>
                 setStatus(
                   event.target.value
-                );
-
-              }
+                )
             }
             sx={{
               minWidth: 145
@@ -2087,9 +2344,13 @@ const DesignationList = () => {
                     key={id}
                     value={id}
                   >
+
                     {
-                      company.companyName
+                      getCompanyName(
+                        company
+                      )
                     }
+
                   </MenuItem>
 
                 );
@@ -2109,13 +2370,10 @@ const DesignationList = () => {
             }
             displayEmpty
             onChange={
-              event => {
-
+              event =>
                 setDepartmentId(
                   event.target.value
-                );
-
-              }
+                )
             }
             sx={{
               minWidth: 185
@@ -2142,9 +2400,13 @@ const DesignationList = () => {
                     key={id}
                     value={id}
                   >
+
                     {
-                      department.departmentName
+                      getDepartmentName(
+                        department
+                      )
                     }
+
                   </MenuItem>
 
                 );
@@ -2163,13 +2425,10 @@ const DesignationList = () => {
               sortBy
             }
             onChange={
-              event => {
-
+              event =>
                 setSortBy(
                   event.target.value
-                );
-
-              }
+                )
             }
             sx={{
               minWidth: 150
@@ -2215,11 +2474,13 @@ const DesignationList = () => {
               fontWeight: 800
             }}
           >
+
             {
               direction === "asc"
                 ? "A → Z"
                 : "Z → A"
             }
+
           </Button>
 
 
@@ -2275,9 +2536,7 @@ const DesignationList = () => {
       </Paper>
 
 
-      {/* =====================================================
-          RESULT COUNT
-      ===================================================== */}
+      {/* RESULT COUNT */}
 
       <Stack
         direction="row"
@@ -2291,6 +2550,7 @@ const DesignationList = () => {
           variant="body2"
           color="text.secondary"
         >
+
           {
             loading
               ? "Loading designations..."
@@ -2300,14 +2560,13 @@ const DesignationList = () => {
                     : "s"
                 } found`
           }
+
         </Typography>
 
       </Stack>
 
 
-      {/* =====================================================
-          TABLE
-      ===================================================== */}
+      {/* TABLE */}
 
       <Box
         sx={{
@@ -2374,9 +2633,7 @@ const DesignationList = () => {
       </Box>
 
 
-      {/* =====================================================
-          CREATE / EDIT
-      ===================================================== */}
+      {/* CREATE / EDIT */}
 
       <Dialog
         open={
@@ -2422,9 +2679,7 @@ const DesignationList = () => {
       </Dialog>
 
 
-      {/* =====================================================
-          VIEW
-      ===================================================== */}
+      {/* VIEW */}
 
       <DesignationViewDrawer
         open={
@@ -2447,9 +2702,7 @@ const DesignationList = () => {
       />
 
 
-      {/* =====================================================
-          DELETE
-      ===================================================== */}
+      {/* DELETE */}
 
       <DeleteDesignationDialog
         open={
@@ -2473,9 +2726,7 @@ const DesignationList = () => {
       />
 
 
-      {/* =====================================================
-          TOAST
-      ===================================================== */}
+      {/* TOAST */}
 
       <Snackbar
         open={
@@ -2523,7 +2774,9 @@ const DesignationList = () => {
       </Snackbar>
 
     </Box>
+
   );
+
 };
 
 

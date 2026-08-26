@@ -1,55 +1,55 @@
-// src/services/companyService.js
-
 import api from "./api";
 
-/*
-|--------------------------------------------------------------------------
-| GET COMPANIES
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// COMPANY SERVICE
+// ============================================================
 
-export const getCompanies = async ({
-  page = 0,
-  size = 20,
-  search = "",
-  status = "",
-  sortBy = "id",
-  direction = "asc"
-} = {}) => {
+const companyService = {
 
-  const params = {
-    page,
-    size,
-    sort: `${sortBy},${direction}`
-  };
+  // ==========================================================
+  // GET COMPANIES
+  // ==========================================================
 
-  if (search?.trim()) {
-    params.search = search.trim();
-  }
+  async getCompanies({
+    page = 0,
+    size = 100,
+    sortBy = "companyName",
+    direction = "asc",
+    search = "",
+    status = ""
+  } = {}) {
 
-  if (status) {
-    params.status = status;
-  }
+    const params = {
+      page,
+      size,
+      sort: `${sortBy},${direction}`
+    };
 
-  const response = await api.get(
-    "/companies",
-    {
-      params
+    if (search?.trim()) {
+      params.search = search.trim();
     }
-  );
 
-  return response.data;
-};
+    if (status) {
+      params.status = status;
+    }
 
+    const response = await api.get(
+      "/companies",
+      {
+        params
+      }
+    );
 
-/*
-|--------------------------------------------------------------------------
-| GET COMPANY BY ID
-|--------------------------------------------------------------------------
-*/
+    return response.data;
+  },
 
-export const getCompanyById =
-  async (companyId) => {
+  // ==========================================================
+  // GET SINGLE COMPANY
+  // ==========================================================
+
+  async getCompanyById(
+    companyId
+  ) {
 
     if (!companyId) {
       throw new Error(
@@ -57,32 +57,21 @@ export const getCompanyById =
       );
     }
 
-
     const response =
       await api.get(
         `/companies/${companyId}`
       );
 
-
     return response.data;
-  };
+  },
 
+  // ==========================================================
+  // CREATE COMPANY
+  // ==========================================================
 
-/*
-|--------------------------------------------------------------------------
-| CREATE COMPANY
-|--------------------------------------------------------------------------
-*/
-
-export const createCompany =
-  async (payload) => {
-
-    if (!payload) {
-      throw new Error(
-        "Company data is required."
-      );
-    }
-
+  async createCompany(
+    payload
+  ) {
 
     const response =
       await api.post(
@@ -90,36 +79,23 @@ export const createCompany =
         payload
       );
 
-
     return response.data;
-  };
+  },
 
+  // ==========================================================
+  // UPDATE COMPANY
+  // ==========================================================
 
-/*
-|--------------------------------------------------------------------------
-| UPDATE COMPANY
-|--------------------------------------------------------------------------
-*/
-
-export const updateCompany =
-  async (
+  async updateCompany(
     companyId,
     payload
-  ) => {
+  ) {
 
     if (!companyId) {
       throw new Error(
-        "Company ID is required."
+        "Company ID is required for update."
       );
     }
-
-
-    if (!payload) {
-      throw new Error(
-        "Company data is required."
-      );
-    }
-
 
     const response =
       await api.put(
@@ -127,62 +103,31 @@ export const updateCompany =
         payload
       );
 
-
     return response.data;
-  };
+  },
 
+  // ==========================================================
+  // DELETE COMPANY
+  // ==========================================================
 
-/*
-|--------------------------------------------------------------------------
-| DELETE COMPANY
-|--------------------------------------------------------------------------
-*/
-
-export const deleteCompany =
-  async (companyId) => {
+  async deleteCompany(
+    companyId
+  ) {
 
     if (!companyId) {
       throw new Error(
-        "Company ID is required."
+        "Company ID is required for delete."
       );
     }
-
 
     const response =
       await api.delete(
         `/companies/${companyId}`
       );
 
-
     return response.data;
-  };
-
-
-/*
-|--------------------------------------------------------------------------
-| DEFAULT EXPORT
-|--------------------------------------------------------------------------
-|
-| Keep this because existing pages/components may use:
-|
-| import companyService from "../../services/companyService";
-|
-|--------------------------------------------------------------------------
-*/
-
-const companyService = {
-
-  getCompanies,
-
-  getCompanyById,
-
-  createCompany,
-
-  updateCompany,
-
-  deleteCompany
+  }
 
 };
-
 
 export default companyService;

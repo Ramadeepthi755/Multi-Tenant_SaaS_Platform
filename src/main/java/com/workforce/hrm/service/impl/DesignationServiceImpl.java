@@ -11,6 +11,7 @@ import com.workforce.hrm.dto.request.DesignationRequestDTO;
 import com.workforce.hrm.dto.response.DesignationResponseDTO;
 import com.workforce.hrm.entity.Department;
 import com.workforce.hrm.entity.Designation;
+import com.workforce.hrm.exception.DuplicateResourceException;
 import com.workforce.hrm.exception.ResourceNotFoundException;
 import com.workforce.hrm.mapper.DesignationMapper;
 import com.workforce.hrm.repository.DepartmentRepository;
@@ -47,12 +48,14 @@ public class DesignationServiceImpl
     public DesignationResponseDTO createDesignation(
             DesignationRequestDTO request) {
 
-        if (designationRepository.existsByDesignationCode(
-                request.getDesignationCode())) {
+    	if (designationRepository.existsByDesignationCode(
+    	        request.getDesignationCode())) {
 
-            throw new RuntimeException(
-                    "Designation Code Already Exists");
-        }
+    	    throw new DuplicateResourceException(
+    	        "Designation code already exists: "
+    	        + request.getDesignationCode()
+    	    );
+    	}
 
         Department department =
                 getDepartmentAndValidateAccess(

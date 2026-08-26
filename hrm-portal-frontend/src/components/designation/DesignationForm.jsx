@@ -12,29 +12,117 @@ import {
 
 import {
   useEffect,
+  useMemo,
   useState
 } from "react";
 
 
 /*
 |--------------------------------------------------------------------------
-| DEFAULT FORM
-|--------------------------------------------------------------------------
-|
-| designationUtils.js does not exist in the project.
-| Keep the default form state here.
-|
+| EMPTY FORM
 |--------------------------------------------------------------------------
 */
 
-const emptyDesignationForm = {
+const EMPTY_FORM = {
   designationName: "",
   designationCode: "",
   description: "",
   companyId: "",
   departmentId: "",
-  status: "ACTIVE",
-  active: true
+  status: "ACTIVE"
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| COMPANY HELPERS
+|--------------------------------------------------------------------------
+*/
+
+const getCompanyId = (
+  company
+) => {
+
+  return (
+    company?.companyId ??
+    company?.id ??
+    null
+  );
+
+};
+
+
+const getCompanyName = (
+  company
+) => {
+
+  return String(
+    company?.companyName ??
+    company?.name ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| DEPARTMENT HELPERS
+|--------------------------------------------------------------------------
+*/
+
+const getDepartmentId = (
+  department
+) => {
+
+  return (
+    department?.departmentId ??
+    department?.id ??
+    null
+  );
+
+};
+
+
+const getDepartmentName = (
+  department
+) => {
+
+  return (
+    department?.departmentName ??
+    department?.name ??
+    ""
+  );
+
+};
+
+
+/*
+ * Get company ID directly from department.
+ *
+ * Preferred:
+ *
+ * department.companyId
+ * department.company.id
+ *
+ * Fallback:
+ *
+ * companyName mapping is handled separately.
+ */
+
+const getDepartmentCompanyId = (
+  department
+) => {
+
+  return (
+    department?.companyId ??
+    department?.company?.companyId ??
+    department?.company?.id ??
+    null
+  );
+
 };
 
 
@@ -56,18 +144,146 @@ const DesignationForm = ({
   onSubmit
 }) => {
 
+
   const [
     form,
     setForm
-  ] = useState(
-    emptyDesignationForm
-  );
+  ] = useState({
+    ...EMPTY_FORM
+  });
 
 
   const [
     errors,
     setErrors
   ] = useState({});
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | FIND COMPANY
+  |--------------------------------------------------------------------------
+  */
+
+  const selectedCompany =
+    useMemo(() => {
+
+      if (!form.companyId) {
+        return null;
+      }
+
+      return (
+        companies.find(
+          company =>
+            String(
+              getCompanyId(company)
+            ) ===
+            String(
+              form.companyId
+            )
+        ) ?? null
+      );
+
+    }, [
+      companies,
+      form.companyId
+    ]);
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | FILTER DEPARTMENTS
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT:
+  |
+  | First use companyId.
+  |
+  | If department doesn't contain companyId,
+  | fallback to company name.
+  |
+  |--------------------------------------------------------------------------
+  */
+
+  const filteredDepartments =
+    useMemo(() => {
+
+      if (
+        !form.companyId
+      ) {
+
+        return [];
+
+      }
+
+
+      const selectedCompanyName =
+        getCompanyName(
+          selectedCompany
+        );
+
+
+      return departments.filter(
+        department => {
+
+          /*
+           * Preferred ID comparison.
+           */
+
+          const departmentCompanyId =
+            getDepartmentCompanyId(
+              department
+            );
+
+
+          if (
+            departmentCompanyId !== null &&
+            departmentCompanyId !== undefined
+          ) {
+
+            return (
+              String(
+                departmentCompanyId
+              ) ===
+              String(
+                form.companyId
+              )
+            );
+
+          }
+
+
+          /*
+           * Fallback to company name.
+           */
+
+          const departmentCompanyName =
+            String(
+              department?.companyName ??
+              department?.company?.companyName ??
+              department?.company?.name ??
+              ""
+            )
+              .trim()
+              .toLowerCase();
+
+
+          return (
+            Boolean(
+              selectedCompanyName
+            ) &&
+            departmentCompanyName ===
+              selectedCompanyName
+          );
+
+        }
+      );
+
+    }, [
+      departments,
+      form.companyId,
+      selectedCompany
+    ]);
 
 
   /*
@@ -84,77 +300,161 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | EDIT MODE
-    |--------------------------------------------------------------------------
-    */
+     * EDIT
+     */
 
     if (
       mode === "edit" &&
       designation
     ) {
 
+      const departmentId =
+        designation?.departmentId ??
+        designation?.department?.departmentId ??
+        designation?.department?.id ??
+        "";
+
+
+      let companyId =
+        designation?.companyId ??
+        designation?.company?.companyId ??
+        designation?.company?.id ??
+        "";
+
+
+      /*
+       * If designation does not contain companyId,
+       * determine company through department.
+       */
+
+      if (
+        !companyId &&
+        departmentId
+      ) {
+
+        const department =
+          departments.find(
+            item =>
+              String(
+                getDepartmentId(item)
+              ) ===
+              String(
+                departmentId
+              )
+          );
+
+
+        if (department) {
+
+          companyId =
+            getDepartmentCompanyId(
+              department
+            ) ?? "";
+
+
+          /*
+           * Fallback company name.
+           */
+
+          if (
+            !companyId
+          ) {
+
+            const departmentCompanyName =
+              String(
+                department?.companyName ??
+                department?.company?.companyName ??
+                department?.company?.name ??
+                ""
+              )
+                .trim()
+                .toLowerCase();
+
+
+            if (
+              departmentCompanyName
+            ) {
+
+              const company =
+                companies.find(
+                  item =>
+                    getCompanyName(item) ===
+                    departmentCompanyName
+                );
+
+
+              companyId =
+                getCompanyId(
+                  company
+                ) ?? "";
+
+            }
+
+          }
+
+        }
+
+      }
+
+
       setForm({
 
         designationName:
-          designation.designationName ||
+          designation?.designationName ??
           "",
 
         designationCode:
-          designation.designationCode ||
+          designation?.designationCode ??
           "",
 
         description:
-          designation.description ||
+          designation?.description ??
           "",
 
         companyId:
-          designation.companyId ??
-          designation.company?.id ??
-          "",
+          companyId,
 
         departmentId:
-          designation.departmentId ??
-          designation.department?.id ??
-          "",
+          departmentId,
 
         status:
-          designation.status ||
+          designation?.status ??
           (
-            designation.active === false
+            designation?.active === false
               ? "INACTIVE"
               : "ACTIVE"
-          ),
-
-        active:
-          designation.active !== false
+          )
 
       });
 
-    } else {
+    }
+
+    /*
+     * CREATE
+     */
+
+    else {
 
       /*
-      |--------------------------------------------------------------------------
-      | CREATE MODE
-      |--------------------------------------------------------------------------
-      */
+       * If only one company exists,
+       * automatically select it.
+       */
+
+      const defaultCompanyId =
+        companies.length === 1
+          ? getCompanyId(
+              companies[0]
+            )
+          : "";
+
 
       setForm({
 
-        ...emptyDesignationForm,
-
-        /*
-         * If only one company exists,
-         * select it automatically.
-         */
+        ...EMPTY_FORM,
 
         companyId:
-          companies.length === 1
-            ? companies[0].id
-            : "",
+          defaultCompanyId ?? ""
 
-        departmentId:
-          ""
       });
 
     }
@@ -166,13 +466,97 @@ const DesignationForm = ({
     open,
     mode,
     designation,
-    companies
+    companies,
+    departments
   ]);
 
 
   /*
   |--------------------------------------------------------------------------
-  | HANDLE CHANGE
+  | COMPANY CHANGE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleCompanyChange = (
+    event
+  ) => {
+
+    const companyId =
+      event.target.value;
+
+
+    setForm(
+      previous => ({
+
+        ...previous,
+
+        companyId,
+
+        /*
+         * Changing company MUST reset department.
+         */
+
+        departmentId: ""
+
+      })
+    );
+
+
+    setErrors(
+      previous => ({
+
+        ...previous,
+
+        companyId: "",
+        departmentId: ""
+
+      })
+    );
+
+  };
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | DEPARTMENT CHANGE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleDepartmentChange = (
+    event
+  ) => {
+
+    const departmentId =
+      event.target.value;
+
+
+    setForm(
+      previous => ({
+
+        ...previous,
+
+        departmentId
+
+      })
+    );
+
+
+    setErrors(
+      previous => ({
+
+        ...previous,
+
+        departmentId: ""
+
+      })
+    );
+
+  };
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | NORMAL FIELD CHANGE
   |--------------------------------------------------------------------------
   */
 
@@ -186,76 +570,33 @@ const DesignationForm = ({
     } = event.target;
 
 
-   setForm(
-  previous => ({
-    ...previous,
+    setForm(
+      previous => ({
 
-    [name]: value,
+        ...previous,
 
-    ...(name === "companyId"
-      ? {
-          departmentId: ""
-        }
-      : {})
-  })
-);
+        [name]: value
+
+      })
+    );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | CLEAR FIELD ERROR
-    |--------------------------------------------------------------------------
-    */
+    setErrors(
+      previous => ({
 
-    if (
-      errors[name]
-    ) {
+        ...previous,
 
-      setErrors(
-        previous => ({
-          ...previous,
-          [name]: ""
-        })
-      );
+        [name]: ""
 
-    }
+      })
+    );
 
   };
 
 
   /*
   |--------------------------------------------------------------------------
-  | FILTER DEPARTMENTS
-  |--------------------------------------------------------------------------
-  */
-
-  const filteredDepartments =
-    form.companyId
-      ? departments.filter(
-          department => {
-
-            const departmentCompanyId =
-              department.companyId ??
-              department.company?.id;
-
-
-            return (
-              String(
-                departmentCompanyId
-              ) ===
-              String(
-                form.companyId
-              )
-            );
-
-          }
-        )
-      : [];
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | VALIDATION
+  | VALIDATE
   |--------------------------------------------------------------------------
   */
 
@@ -265,36 +606,23 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | DESIGNATION NAME
-    |--------------------------------------------------------------------------
-    */
+     * NAME
+     */
 
-    const name =
+    const designationName =
       String(
         form.designationName || ""
       ).trim();
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | DESIGNATION CODE
-    |--------------------------------------------------------------------------
-    */
-
-    const code =
-      String(
-        form.designationCode || ""
-      ).trim();
-
-
-    if (!name) {
+    if (!designationName) {
 
       nextErrors.designationName =
         "Designation name is required.";
 
-    } else if (
-      name.length < 2
+    }
+    else if (
+      designationName.length < 2
     ) {
 
       nextErrors.designationName =
@@ -304,19 +632,24 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | CODE
-    |--------------------------------------------------------------------------
-    */
+     * CODE
+     */
 
-    if (!code) {
+    const designationCode =
+      String(
+        form.designationCode || ""
+      ).trim();
+
+
+    if (!designationCode) {
 
       nextErrors.designationCode =
         "Designation code is required.";
 
-    } else if (
+    }
+    else if (
       !/^[A-Za-z0-9_-]+$/.test(
-        code
+        designationCode
       )
     ) {
 
@@ -327,15 +660,10 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | COMPANY
-    |--------------------------------------------------------------------------
-    */
+     * COMPANY
+     */
 
-    if (
-      companies.length > 0 &&
-      !form.companyId
-    ) {
+    if (!form.companyId) {
 
       nextErrors.companyId =
         "Please select a company.";
@@ -344,16 +672,21 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | DEPARTMENT
-    |--------------------------------------------------------------------------
-    */
+     * DEPARTMENT
+     */
+
+    const departmentId =
+      Number(
+        form.departmentId
+      );
+
 
     if (
-      departments.length > 0 &&
-      form.companyId &&
-      filteredDepartments.length > 0 &&
-      !form.departmentId
+      !form.departmentId ||
+      !Number.isInteger(
+        departmentId
+      ) ||
+      departmentId <= 0
     ) {
 
       nextErrors.departmentId =
@@ -363,24 +696,29 @@ const DesignationForm = ({
 
 
     /*
-    |--------------------------------------------------------------------------
-    | DESCRIPTION
-    |--------------------------------------------------------------------------
-    */
-
-    const description =
-      String(
-        form.description || ""
-      );
-
+     * DESCRIPTION
+     */
 
     if (
-      description.length >
-      500
+      String(
+        form.description || ""
+      ).length > 500
     ) {
 
       nextErrors.description =
         "Description cannot exceed 500 characters.";
+
+    }
+
+
+    /*
+     * STATUS
+     */
+
+    if (!form.status) {
+
+      nextErrors.status =
+        "Status is required.";
 
     }
 
@@ -417,16 +755,54 @@ const DesignationForm = ({
     }
 
 
-    await onSubmit({
+    const departmentId =
+      Number(
+        form.departmentId
+      );
 
-      designationName:
-        String(
-          form.designationName || ""
-        ).trim(),
+
+    if (
+      !Number.isInteger(
+        departmentId
+      ) ||
+      departmentId <= 0
+    ) {
+
+      setErrors(
+        previous => ({
+
+          ...previous,
+
+          departmentId:
+            "Please select a department."
+
+        })
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * IMPORTANT:
+     *
+     * Backend only needs departmentId.
+     *
+     * companyId is used by frontend for selecting
+     * the correct department.
+     */
+
+    const payload = {
 
       designationCode:
         String(
-          form.designationCode || ""
+          form.designationCode
+        ).trim(),
+
+      designationName:
+        String(
+          form.designationName
         ).trim(),
 
       description:
@@ -434,28 +810,24 @@ const DesignationForm = ({
           form.description || ""
         ).trim(),
 
-      companyId:
-        form.companyId
-          ? Number(
-              form.companyId
-            )
-          : null,
-
-      departmentId:
-        form.departmentId
-          ? Number(
-              form.departmentId
-            )
-          : null,
-
       status:
         form.status,
 
-      active:
-        form.status ===
-        "ACTIVE"
+      departmentId:
+        departmentId
 
-    });
+    };
+
+
+    console.log(
+      "FINAL DESIGNATION PAYLOAD:",
+      payload
+    );
+
+
+    await onSubmit(
+      payload
+    );
 
   };
 
@@ -474,10 +846,6 @@ const DesignationForm = ({
       }
     >
 
-      {/* =====================================================
-          TITLE
-      ===================================================== */}
-
       <DialogTitle
         sx={{
           fontWeight: 900
@@ -493,10 +861,6 @@ const DesignationForm = ({
       </DialogTitle>
 
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-
       <DialogContent
         dividers
       >
@@ -508,17 +872,12 @@ const DesignationForm = ({
           }}
         >
 
-          {/* =================================================
-              ERROR
-          ================================================= */}
+          {/* SERVER ERROR */}
 
           {error && (
 
             <Alert
               severity="error"
-              sx={{
-                borderRadius: 2
-              }}
             >
               {error}
             </Alert>
@@ -526,9 +885,7 @@ const DesignationForm = ({
           )}
 
 
-          {/* =================================================
-              DESIGNATION NAME
-          ================================================= */}
+          {/* NAME */}
 
           <TextField
             fullWidth
@@ -541,6 +898,9 @@ const DesignationForm = ({
             onChange={
               handleChange
             }
+            disabled={
+              loading
+            }
             error={
               Boolean(
                 errors.designationName
@@ -549,15 +909,10 @@ const DesignationForm = ({
             helperText={
               errors.designationName
             }
-            disabled={
-              loading
-            }
           />
 
 
-          {/* =================================================
-              DESIGNATION CODE
-          ================================================= */}
+          {/* CODE */}
 
           <TextField
             fullWidth
@@ -585,9 +940,7 @@ const DesignationForm = ({
           />
 
 
-          {/* =================================================
-              COMPANY
-          ================================================= */}
+          {/* COMPANY */}
 
           <TextField
             select
@@ -598,7 +951,10 @@ const DesignationForm = ({
               form.companyId
             }
             onChange={
-              handleChange
+              handleCompanyChange
+            }
+            disabled={
+              loading
             }
             error={
               Boolean(
@@ -606,52 +962,49 @@ const DesignationForm = ({
               )
             }
             helperText={
-              errors.companyId
-            }
-            disabled={
-              loading ||
-              (
-                mode === "edit" &&
-                Boolean(
-                  designation?.companyId ||
-                  designation?.company?.id
-                )
-              )
+              errors.companyId ||
+              "Select a company first"
             }
           >
 
-            <MenuItem
-              value=""
-            >
+            <MenuItem value="">
               Select Company
             </MenuItem>
 
 
             {companies.map(
-              company => (
+              company => {
 
-                <MenuItem
-                  key={
-                    company.id
-                  }
-                  value={
-                    company.id
-                  }
-                >
-                  {
-                    company.companyName
-                  }
-                </MenuItem>
+                const id =
+                  getCompanyId(
+                    company
+                  );
 
-              )
+
+                return (
+
+                  <MenuItem
+                    key={id}
+                    value={id}
+                  >
+
+                    {
+                      company?.companyName ??
+                      company?.name ??
+                      "Unnamed Company"
+                    }
+
+                  </MenuItem>
+
+                );
+
+              }
             )}
 
           </TextField>
 
 
-          {/* =================================================
-              DEPARTMENT
-          ================================================= */}
+          {/* DEPARTMENT */}
 
           <TextField
             select
@@ -662,7 +1015,7 @@ const DesignationForm = ({
               form.departmentId
             }
             onChange={
-              handleChange
+              handleDepartmentChange
             }
             disabled={
               loading ||
@@ -675,20 +1028,21 @@ const DesignationForm = ({
               )
             }
             helperText={
+
               errors.departmentId ||
+
               (
                 !form.companyId
                   ? "Select a company first."
                   : filteredDepartments.length === 0
-                    ? "No departments available for this company."
-                    : ""
+                    ? "No departments found for this company."
+                    : "Select a department."
               )
+
             }
           >
 
-            <MenuItem
-              value=""
-            >
+            <MenuItem value="">
               Select Department
             </MenuItem>
 
@@ -696,24 +1050,25 @@ const DesignationForm = ({
             {filteredDepartments.map(
               department => {
 
-                const departmentId =
-                  department.id ??
-                  department.departmentId;
+                const id =
+                  getDepartmentId(
+                    department
+                  );
 
 
                 return (
 
                   <MenuItem
-                    key={
-                      departmentId
-                    }
-                    value={
-                      departmentId
-                    }
+                    key={id}
+                    value={id}
                   >
+
                     {
-                      department.departmentName
+                      getDepartmentName(
+                        department
+                      )
                     }
+
                   </MenuItem>
 
                 );
@@ -724,9 +1079,7 @@ const DesignationForm = ({
           </TextField>
 
 
-          {/* =================================================
-              DESCRIPTION
-          ================================================= */}
+          {/* DESCRIPTION */}
 
           <TextField
             fullWidth
@@ -741,6 +1094,9 @@ const DesignationForm = ({
             onChange={
               handleChange
             }
+            disabled={
+              loading
+            }
             error={
               Boolean(
                 errors.description
@@ -754,15 +1110,10 @@ const DesignationForm = ({
                 ).length
               }/500`
             }
-            disabled={
-              loading
-            }
           />
 
 
-          {/* =================================================
-              STATUS
-          ================================================= */}
+          {/* STATUS */}
 
           <TextField
             select
@@ -778,18 +1129,21 @@ const DesignationForm = ({
             disabled={
               loading
             }
+            error={
+              Boolean(
+                errors.status
+              )
+            }
+            helperText={
+              errors.status
+            }
           >
 
-            <MenuItem
-              value="ACTIVE"
-            >
+            <MenuItem value="ACTIVE">
               Active
             </MenuItem>
 
-
-            <MenuItem
-              value="INACTIVE"
-            >
+            <MenuItem value="INACTIVE">
               Inactive
             </MenuItem>
 
@@ -799,10 +1153,6 @@ const DesignationForm = ({
 
       </DialogContent>
 
-
-      {/* =====================================================
-          ACTIONS
-      ===================================================== */}
 
       <DialogActions
         sx={{
@@ -817,9 +1167,6 @@ const DesignationForm = ({
           disabled={
             loading
           }
-          sx={{
-            fontWeight: 750
-          }}
         >
           Cancel
         </Button>
