@@ -459,6 +459,13 @@ export const normalizeDashboardData = (
       0
     );
 
+  const todayPresent =
+    getStatValue(
+      source,
+      ["todayPresent", "todayAttendance"],
+      0
+    );
+
 
   const todayLeaves =
     getStatValue(
@@ -506,6 +513,9 @@ export const normalizeDashboardData = (
 
   normalized.todayAttendance =
     todayAttendance;
+
+  normalized.todayPresent =
+    todayPresent;
 
 
   normalized.todayLeaves =
@@ -622,6 +632,8 @@ export const normalizeDashboardData = (
 
     todayAttendance,
 
+    todayPresent,
+
     todayLeaves,
 
     currentMonthPayroll,
@@ -651,8 +663,7 @@ export const normalizeDashboardData = (
       todayAttendance,
 
     present:
-      source.presentToday ??
-      0,
+      todayPresent,
 
     absent:
       source.absentToday ??

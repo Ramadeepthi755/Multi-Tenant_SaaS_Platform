@@ -24,12 +24,6 @@ public class PermissionSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-
-        if (permissionRepository.count() > 0) {
-            log.info("Permissions already exist. Skipping Permission Seeder.");
-            return;
-        }
-
         // ================= COMPANY =================
         createPermission("COMPANY_CREATE", "Create Company", "COMPANY");
         createPermission("COMPANY_READ", "View Company", "COMPANY");
@@ -96,12 +90,16 @@ public class PermissionSeeder implements CommandLineRunner {
         // ================= DASHBOARD =================
         createPermission("DASHBOARD_VIEW", "View Dashboard", "DASHBOARD");
 
-        log.info("Default Permissions Created Successfully.");
+        log.info("Default permissions verified successfully.");
     }
 
     private void createPermission(String permissionName,
                                   String description,
                                   String module) {
+
+        if (permissionRepository.existsByPermissionName(permissionName)) {
+            return;
+        }
 
         Permission permission = new Permission();
 

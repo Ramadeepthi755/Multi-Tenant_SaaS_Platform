@@ -13,10 +13,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.data.domain.PageRequest;
 
 import com.workforce.hrm.dto.request.LeaveRequestDTO;
 import com.workforce.hrm.dto.response.LeaveResponseDTO;
 import com.workforce.hrm.enums.LeaveStatus;
+import com.workforce.hrm.enums.LeaveType;
+import com.workforce.hrm.dto.response.LeaveSummaryDTO;
+import java.time.LocalDate;
 import com.workforce.hrm.service.LeaveService;
 
 import jakarta.validation.Valid;
@@ -42,12 +48,26 @@ public class LeaveController {
     // =========================================================
 
     @GetMapping
+    @PreAuthorize("hasAuthority('LEAVE_READ')")
     public ResponseEntity<Page<LeaveResponseDTO>> getAllLeaves(
-            Pageable pageable) {
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) LeaveType leaveType,
+            @RequestParam(required = false) LeaveStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        return ResponseEntity.ok(
-                leaveService.getAllLeaves(
-                        pageable));
+        return ResponseEntity.ok(leaveService.getLeaves(employeeId, leaveType, status,
+                search, fromDate, toDate,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))));
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAuthority('LEAVE_READ')")
+    public ResponseEntity<LeaveSummaryDTO> getLeaveSummary() {
+        return ResponseEntity.ok(leaveService.getLeaveSummary());
     }
 
     // =========================================================
@@ -55,6 +75,7 @@ public class LeaveController {
     // =========================================================
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('LEAVE_READ')")
     public ResponseEntity<LeaveResponseDTO> getLeaveById(
             @PathVariable Long id) {
 
@@ -71,6 +92,7 @@ public class LeaveController {
     // =========================================================
 
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAuthority('LEAVE_READ')")
     public ResponseEntity<Page<LeaveResponseDTO>> getEmployeeLeaves(
             @PathVariable Long employeeId,
             Pageable pageable) {
@@ -90,6 +112,7 @@ public class LeaveController {
     // =========================================================
 
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAuthority('LEAVE_READ')")
     public ResponseEntity<Page<LeaveResponseDTO>> getLeavesByStatus(
             @PathVariable LeaveStatus status,
             Pageable pageable) {
@@ -105,6 +128,7 @@ public class LeaveController {
     // =========================================================
 
     @PostMapping
+    @PreAuthorize("hasAuthority('LEAVE_CREATE')")
     public ResponseEntity<LeaveResponseDTO> createLeave(
             @Valid @RequestBody LeaveRequestDTO request) {
 
@@ -122,6 +146,7 @@ public class LeaveController {
     // =========================================================
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('LEAVE_CREATE')")
     public ResponseEntity<LeaveResponseDTO> updateLeave(
             @PathVariable Long id,
             @Valid @RequestBody LeaveRequestDTO request) {
@@ -137,6 +162,7 @@ public class LeaveController {
     // =========================================================
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('LEAVE_CREATE')")
     public ResponseEntity<Void> deleteLeave(
             @PathVariable Long id) {
 
@@ -151,6 +177,7 @@ public class LeaveController {
     // =========================================================
 
     @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAuthority('LEAVE_APPROVE')")
     public ResponseEntity<LeaveResponseDTO> approveLeave(
             @PathVariable Long id) {
 
@@ -163,6 +190,7 @@ public class LeaveController {
     // =========================================================
 
     @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('LEAVE_REJECT')")
     public ResponseEntity<LeaveResponseDTO> rejectLeave(
             @PathVariable Long id) {
 

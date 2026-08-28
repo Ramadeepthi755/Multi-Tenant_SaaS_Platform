@@ -472,8 +472,6 @@ const Profile = () => {
           );
 
 
-        case "personal":
-
         default:
 
           return (

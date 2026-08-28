@@ -11,7 +11,9 @@ public class DepartmentResponseDTO {
 
 	private String description;
 	private DepartmentStatus status;
+	private Long companyId;
 	private String companyName;
+	private Long employeeCount;
 
 	public Long getDepartmentId() {
 		return departmentId;
@@ -57,7 +59,23 @@ public class DepartmentResponseDTO {
 		return companyName;
 	}
 
+	public Long getCompanyId() {
+		return companyId;
+	}
+
+	public void setCompanyId(Long companyId) {
+		this.companyId = companyId;
+	}
+
 	public void setCompanyName(String companyName) {
 		this.companyName = companyName;
+	}
+
+	public Long getEmployeeCount() {
+		return employeeCount;
+	}
+
+	public void setEmployeeCount(Long employeeCount) {
+		this.employeeCount = employeeCount;
 	}
 }

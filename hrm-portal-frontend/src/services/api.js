@@ -18,9 +18,6 @@ const api = axios.create({
     ENV.REQUEST_TIMEOUT,
 
   headers: {
-    "Content-Type":
-      "application/json",
-
     Accept:
       "application/json"
   }
@@ -37,6 +34,50 @@ REQUEST INTERCEPTOR
 api.interceptors.request.use(
 
   config => {
+
+    const requestUrl =
+      config.url || "";
+
+    /*
+     * A login or password-reset request must never inherit a stale bearer
+     * token. That lets a user establish a fresh session after an expiration
+     * instead of asking the JWT filter to process the old session first.
+     */
+    const isPublicAuthRequest =
+      config.skipAuth === true ||
+      /^\/?(?:api\/)?auth(?:\/|$)/.test(
+        requestUrl
+      );
+
+
+    if (
+      isPublicAuthRequest
+    ) {
+
+      if (
+        config.headers
+      ) {
+
+        if (
+          typeof config.headers.delete === "function"
+        ) {
+
+          config.headers.delete(
+            "Authorization"
+          );
+
+        } else {
+
+          delete config.headers.Authorization;
+
+        }
+
+      }
+
+      return config;
+
+    }
+
 
     const token =
       storage.getToken();
@@ -95,7 +136,8 @@ api.interceptors.response.use(
     */
 
     if (
-      status === 401
+      status === 401 &&
+      !error?.config?.skipAuthRedirect
     ) {
 
       const currentPath =

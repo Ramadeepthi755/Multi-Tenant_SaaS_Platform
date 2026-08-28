@@ -1,7 +1,10 @@
 package com.workforce.hrm.service.impl;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.workforce.hrm.dto.request.ChangePasswordRequest;
 import com.workforce.hrm.dto.request.ResetPasswordRequest;
+import com.workforce.hrm.dto.request.UpdateOwnProfileRequest;
 import com.workforce.hrm.dto.request.UserRequestDTO;
 import com.workforce.hrm.dto.response.UserResponse;
 import com.workforce.hrm.entity.Company;
@@ -29,13 +33,25 @@ import com.workforce.hrm.service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.workforce.hrm.service.FileStorageService;
+import com.workforce.hrm.service.EmailService;
+import com.workforce.hrm.exception.ResourceNotFoundException;
 
 @Service
 @Transactional
 public class UserServiceImpl implements UserService {
+
+    private static final long MAX_PROFILE_PHOTO_SIZE =
+            5 * 1024 * 1024;
+
+    private static final Set<String> ALLOWED_PROFILE_PHOTO_TYPES =
+            Set.of(
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,6 +60,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordResetTokenRepository tokenRepository;
     private final AuditLogService auditLogService;
     private final FileStorageService fileStorageService;
+    private final EmailService emailService;
+    private final String frontendBaseUrl;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -51,7 +69,11 @@ public class UserServiceImpl implements UserService {
             RoleRepository roleRepository,
             CompanyRepository companyRepository,
             PasswordResetTokenRepository tokenRepository,
-            AuditLogService auditLogService,FileStorageService fileStorageService) {
+            AuditLogService auditLogService,
+            FileStorageService fileStorageService,
+            EmailService emailService,
+            @Value("${app.frontend-base-url:http://localhost:5173}")
+            String frontendBaseUrl) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -59,7 +81,9 @@ public class UserServiceImpl implements UserService {
         this.companyRepository = companyRepository;
         this.tokenRepository = tokenRepository;
         this.auditLogService = auditLogService;
-        this.fileStorageService =fileStorageService;
+        this.fileStorageService = fileStorageService;
+        this.emailService = emailService;
+        this.frontendBaseUrl = frontendBaseUrl.replaceAll("/$", "");
     }
 
     // =========================================================
@@ -185,6 +209,29 @@ public class UserServiceImpl implements UserService {
                                         "Current User Not Found"));
 
         return UserMapper.toResponse(user);
+    }
+
+    @Override
+    public UserResponse updateCurrentUser(
+            String email,
+            UpdateOwnProfileRequest request) {
+
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Current user was not found."));
+
+        user.setFullName(request.getFullName().trim());
+
+        User updatedUser = userRepository.save(user);
+
+        auditLogService.saveLog(
+                "UPDATE_PROFILE",
+                "USER",
+                "Updated personal profile: " + updatedUser.getEmail(),
+                "SYSTEM");
+
+        return UserMapper.toResponse(updatedUser);
     }
 
     // =========================================================
@@ -416,12 +463,14 @@ public class UserServiceImpl implements UserService {
     public void forgotPassword(
             String email) {
 
-        User user =
-                userRepository
-                        .findByEmail(email)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "User Not Found"));
+        User user = userRepository
+                .findByEmail(email == null ? "" : email.trim().toLowerCase())
+                .orElse(null);
+
+        // Keep this request indistinguishable for unknown addresses.
+        if (user == null) {
+            return;
+        }
 
         tokenRepository
                 .findByUser(user)
@@ -442,16 +491,23 @@ public class UserServiceImpl implements UserService {
                 LocalDateTime.now()
                         .plusMinutes(30));
 
-        tokenRepository.save(
-                resetToken);
+        tokenRepository.save(resetToken);
 
-        /*
-         * Development only.
-         *
-         * Later replace with EmailService.
-         */
-        System.out.println(
-                "RESET TOKEN = " + token);
+        String resetLink = frontendBaseUrl
+                + "/reset-password?token=" + token;
+
+        try {
+            emailService.sendEmail(
+                    user.getEmail(),
+                    "Reset your HRM Portal password",
+                    "We received a request to reset your HRM Portal password. "
+                            + "Use this link within 30 minutes: " + resetLink
+                            + "\n\nIf you did not request this change, you can ignore this email.");
+        } catch (RuntimeException exception) {
+            tokenRepository.delete(resetToken);
+            throw new IllegalStateException(
+                    "Password-reset email could not be delivered. Please try again later.");
+        }
     }
 
     // =========================================================
@@ -702,27 +758,29 @@ public class UserServiceImpl implements UserService {
              file.getContentType();
 
      if (contentType == null ||
-             !contentType.startsWith("image/")) {
+             !ALLOWED_PROFILE_PHOTO_TYPES.contains(
+                     contentType.toLowerCase(Locale.ROOT))) {
 
          throw new IllegalArgumentException(
-                 "Only image files are allowed.");
+                 "Profile photo must be a JPEG, PNG, or WebP image.");
      }
 
-     long maxSize =
-             5 * 1024 * 1024;
-
-     if (file.getSize() > maxSize) {
+     if (file.getSize() > MAX_PROFILE_PHOTO_SIZE) {
 
          throw new IllegalArgumentException(
                  "Profile photo must be less than 5 MB.");
      }
 
+     validateProfilePhoto(
+             file,
+             contentType.toLowerCase(Locale.ROOT));
+
      User user =
              userRepository
                      .findByEmail(email)
                      .orElseThrow(() ->
-                             new RuntimeException(
-                                     "User Not Found"));
+                             new ResourceNotFoundException(
+                                     "Current user was not found."));
 
      String oldPhoto =
              user.getProfilePhoto();
@@ -761,6 +819,32 @@ public class UserServiceImpl implements UserService {
 
 
  // =========================================================
+ // DELETE OWN PROFILE PHOTO
+ // =========================================================
+
+ @Override
+ @Transactional
+ public void deleteProfilePhoto(
+         String email) {
+
+     User user = userRepository
+             .findByEmail(email)
+             .orElseThrow(() -> new ResourceNotFoundException(
+                     "Current user was not found."));
+
+     String photo = user.getProfilePhoto();
+
+     if (photo == null || photo.isBlank()) {
+         return;
+     }
+
+     user.setProfilePhoto(null);
+     userRepository.save(user);
+     fileStorageService.deleteFile(photo);
+ }
+
+
+ // =========================================================
  // GET PROFILE PHOTO FILE NAME
  // =========================================================
 
@@ -773,16 +857,14 @@ public class UserServiceImpl implements UserService {
              userRepository
                      .findByEmail(email)
                      .orElseThrow(() ->
-                             new RuntimeException(
-                                     "User Not Found"));
+                             new ResourceNotFoundException(
+                                     "Current user was not found."));
 
      String photo =
              user.getProfilePhoto();
 
-     if (photo == null ||
-             photo.isBlank()) {
-
-         throw new RuntimeException(
+     if (photo == null || photo.isBlank()) {
+         throw new ResourceNotFoundException(
                  "Profile photo not found.");
      }
 
@@ -800,5 +882,87 @@ public class UserServiceImpl implements UserService {
 
      return fileStorageService
              .loadFile(fileName);
+ }
+
+
+ private void validateProfilePhoto(
+         MultipartFile file,
+         String contentType) {
+
+     String originalFileName =
+             file.getOriginalFilename();
+
+     if (originalFileName == null ||
+             originalFileName.isBlank()) {
+
+         throw new IllegalArgumentException(
+                 "Profile photo file name is required.");
+     }
+
+     String normalizedName =
+             originalFileName
+                     .trim()
+                     .toLowerCase(Locale.ROOT);
+
+     boolean allowedExtension =
+             ("image/jpeg".equals(contentType) &&
+                     (normalizedName.endsWith(".jpg") ||
+                             normalizedName.endsWith(".jpeg"))) ||
+             ("image/png".equals(contentType) &&
+                     normalizedName.endsWith(".png")) ||
+             ("image/webp".equals(contentType) &&
+                     normalizedName.endsWith(".webp"));
+
+     if (!allowedExtension) {
+         throw new IllegalArgumentException(
+                 "Profile photo file extension does not match its image type.");
+     }
+
+     try {
+         byte[] bytes = file.getBytes();
+
+         if (!hasExpectedImageSignature(bytes, contentType)) {
+             throw new IllegalArgumentException(
+                     "Profile photo contents do not match its image type.");
+         }
+     } catch (IOException exception) {
+         throw new IllegalArgumentException(
+                 "Profile photo could not be read.");
+     }
+ }
+
+
+ private boolean hasExpectedImageSignature(
+         byte[] bytes,
+         String contentType) {
+
+     if ("image/jpeg".equals(contentType)) {
+         return bytes.length >= 3 &&
+                 (bytes[0] & 0xFF) == 0xFF &&
+                 (bytes[1] & 0xFF) == 0xD8 &&
+                 (bytes[2] & 0xFF) == 0xFF;
+     }
+
+     if ("image/png".equals(contentType)) {
+         return bytes.length >= 8 &&
+                 (bytes[0] & 0xFF) == 0x89 &&
+                 bytes[1] == 0x50 &&
+                 bytes[2] == 0x4E &&
+                 bytes[3] == 0x47 &&
+                 bytes[4] == 0x0D &&
+                 bytes[5] == 0x0A &&
+                 bytes[6] == 0x1A &&
+                 bytes[7] == 0x0A;
+     }
+
+     return bytes.length >= 12 &&
+             bytes[0] == 0x52 &&
+             bytes[1] == 0x49 &&
+             bytes[2] == 0x46 &&
+             bytes[3] == 0x46 &&
+             bytes[8] == 0x57 &&
+             bytes[9] == 0x45 &&
+             bytes[10] == 0x42 &&
+             bytes[11] == 0x50;
  }
 }

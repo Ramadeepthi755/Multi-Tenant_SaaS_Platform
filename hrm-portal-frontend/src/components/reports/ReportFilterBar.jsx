@@ -28,7 +28,8 @@ const ReportFilterBar = ({
   showToDate = true,
   showMonth = false,
   showYear = false,
-  showEmployee = false
+  showEmployee = false,
+  statusOptions = []
 }) => {
 
   return (
@@ -160,41 +161,14 @@ const ReportFilterBar = ({
             All Status
           </MenuItem>
 
-          <MenuItem value="ACTIVE">
-            Active
-          </MenuItem>
-
-          <MenuItem value="INACTIVE">
-            Inactive
-          </MenuItem>
-
-          <MenuItem value="PRESENT">
-            Present
-          </MenuItem>
-
-          <MenuItem value="ABSENT">
-            Absent
-          </MenuItem>
-
-          <MenuItem value="LATE">
-            Late
-          </MenuItem>
-
-          <MenuItem value="APPROVED">
-            Approved
-          </MenuItem>
-
-          <MenuItem value="REJECTED">
-            Rejected
-          </MenuItem>
-
-          <MenuItem value="PENDING">
-            Pending
-          </MenuItem>
-
-          <MenuItem value="PROCESSED">
-            Processed
-          </MenuItem>
+          {statusOptions.map(option => (
+            <MenuItem
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </MenuItem>
+          ))}
 
         </TextField>
 

@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Pagination,
   Paper,
@@ -12,10 +11,6 @@ import {
 
 import PaymentsOutlinedIcon
   from "@mui/icons-material/PaymentsOutlined";
-
-
-import RefreshOutlinedIcon
-  from "@mui/icons-material/RefreshOutlined";
 
 
 import {
@@ -43,6 +38,9 @@ import ReportStatusChip
 
 import ReportEmptyState
   from "../../components/reports/ReportEmptyState";
+
+import ReportActions
+  from "../../components/reports/ReportActions";
 
 
 import reportService
@@ -248,25 +246,13 @@ const PayrollReport = () => {
         }
 
         actions={
-
-          <Button
-            variant="outlined"
-            startIcon={
-              <RefreshOutlinedIcon />
-            }
-            onClick={
-              loadReport
-            }
-            disabled={
-              loading
-            }
-            sx={{
-              fontWeight: 800
-            }}
-          >
-            Refresh
-          </Button>
-
+          <ReportActions
+            reportType="payroll"
+            filters={appliedFilters}
+            onRefresh={loadReport}
+            loading={loading}
+            onError={setError}
+          />
         }
 
       />
@@ -332,6 +318,12 @@ const PayrollReport = () => {
           showDepartment
 
           showStatus
+
+          statusOptions={[
+            { value: "GENERATED", label: "Generated" },
+            { value: "PENDING", label: "Pending" },
+            { value: "PAID", label: "Paid" }
+          ]}
 
           showMonth
 

@@ -50,6 +50,8 @@ public class DesignationMapper {
         dto.setStatus(designation.getStatus());
 
         if (designation.getDepartment() != null) {
+            dto.setDepartmentId(
+                    designation.getDepartment().getDepartmentId());
             dto.setDepartmentName(
                     designation.getDepartment().getDepartmentName());
         }

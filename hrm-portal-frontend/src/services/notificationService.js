@@ -8,21 +8,12 @@ const notificationService = {
     unreadOnly = false
   } = {}) {
 
-    const params = {
-      page,
-      size
-    };
+    const response = await api.get("/notifications");
+    const notifications = response.data || [];
 
-    if (unreadOnly) {
-      params.unreadOnly = true;
-    }
-
-    const response = await api.get(
-      "/notifications",
-      { params }
-    );
-
-    return response.data;
+    return unreadOnly
+      ? notifications.filter(({ status }) => status === "UNREAD")
+      : notifications.slice(page * size, (page + 1) * size);
   },
 
 
@@ -44,7 +35,7 @@ const notificationService = {
       );
     }
 
-    const response = await api.patch(
+    const response = await api.put(
       `/notifications/${notificationId}/read`
     );
 
@@ -54,7 +45,7 @@ const notificationService = {
 
   async markAllAsRead() {
 
-    const response = await api.patch(
+    const response = await api.put(
       "/notifications/read-all"
     );
 
@@ -72,9 +63,7 @@ const notificationService = {
       );
     }
 
-    const response = await api.delete(
-      `/notifications/${notificationId}`
-    );
+    const response = await api.delete(`/notifications/${notificationId}`);
 
     return response.data;
   }

@@ -28,8 +28,7 @@ public class Settings {
     @Lob
     @Column(
         name = "settings_json",
-        nullable = false,
-        columnDefinition = "LONGTEXT"
+        nullable = false
     )
     private String settingsJson;
 

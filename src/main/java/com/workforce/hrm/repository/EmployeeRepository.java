@@ -1,5 +1,6 @@
 package com.workforce.hrm.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,58 @@ public interface EmployeeRepository
 
     Optional<Employee> findByEmployeeCode(
             String employeeCode);
+
+    Optional<Employee> findByEmail(String email);
+
+    @Query("""
+            SELECT e
+            FROM Employee e
+            WHERE (:companyId IS NULL OR e.company.id = :companyId)
+              AND (:status IS NULL OR e.status = :status)
+              AND (:departmentId IS NULL OR e.department.departmentId = :departmentId)
+              AND (:designationId IS NULL OR e.designation.designationId = :designationId)
+              AND (
+                    :search IS NULL
+                    OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(e.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(e.email) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """)
+    Page<Employee> findWorkspaceEmployees(
+            @Param("companyId") Long companyId,
+            @Param("status") EmployeeStatus status,
+            @Param("departmentId") Long departmentId,
+            @Param("designationId") Long designationId,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("""
+            SELECT e
+            FROM Employee e
+            WHERE (:companyId IS NULL OR e.company.id = :companyId)
+              AND (:status IS NULL OR e.status = :status)
+              AND (:departmentId IS NULL OR e.department.departmentId = :departmentId)
+              AND (:designationId IS NULL OR e.designation.designationId = :designationId)
+              AND (:fromDate IS NULL OR e.joiningDate >= :fromDate)
+              AND (:toDate IS NULL OR e.joiningDate <= :toDate)
+              AND (
+                    :search IS NULL
+                    OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(e.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(e.email) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """)
+    Page<Employee> findWorkspaceEmployeesForReport(
+            @Param("companyId") Long companyId,
+            @Param("status") EmployeeStatus status,
+            @Param("departmentId") Long departmentId,
+            @Param("designationId") Long designationId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate,
+            @Param("search") String search,
+            Pageable pageable);
 
 
     // =========================================================

@@ -13,6 +13,9 @@ import api
 import storage
   from "../utils/storage";
 
+import authService
+  from "../services/authService";
+
 
 const AuthContext =
   createContext(null);
@@ -48,6 +51,50 @@ export const AuthProvider = ({
     authError,
     setAuthError
   ] = useState("");
+
+  const [
+    loading,
+    setLoading
+  ] = useState(true);
+
+  // Validate the stored token before rendering protected content. Local
+  // storage is only a cache; the API remains the authority for a session.
+  useEffect(() => {
+    let active = true;
+
+    const restoreSession = async () => {
+      const storedToken = storage.getToken();
+
+      if (!storedToken) {
+        if (active) setLoading(false);
+        return;
+      }
+
+      try {
+        const currentUser = await authService.getCurrentSession();
+
+        if (!active) return;
+
+        storage.setUser(currentUser);
+        setToken(storedToken);
+        setUser(currentUser);
+      } catch {
+        if (!active) return;
+
+        storage.clearAuth();
+        setToken(null);
+        setUser(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
 
   // =========================================================
@@ -91,7 +138,7 @@ export const AuthProvider = ({
     useCallback(
       async () => {
 
-        if (!token) {
+        if (!token || !user) {
 
           setProfilePhotoUrl(
             null
@@ -191,7 +238,8 @@ export const AuthProvider = ({
 
       },
       [
-        token
+        token,
+        user
       ]
     );
 
@@ -202,10 +250,13 @@ export const AuthProvider = ({
 
   useEffect(() => {
 
-    loadProfilePhoto();
+    if (!loading) {
+      loadProfilePhoto();
+    }
 
   }, [
-    loadProfilePhoto
+    loadProfilePhoto,
+    loading
   ]);
 
 
@@ -276,14 +327,13 @@ export const AuthProvider = ({
         try {
 
           const response =
-            await api.post(
-              "/auth/login",
+            await authService.login(
               credentials
             );
 
 
           const data =
-            response?.data;
+            response;
 
 
           if (
@@ -321,6 +371,8 @@ export const AuthProvider = ({
           setUser(
             data.user || null
           );
+
+          setLoading(false);
 
 
           return data;
@@ -374,6 +426,8 @@ export const AuthProvider = ({
 
 
         setAuthError("");
+
+        setLoading(false);
 
       },
       [
@@ -502,6 +556,8 @@ export const AuthProvider = ({
 
         profilePhotoVersion,
 
+        loading,
+
         isAuthenticated:
           Boolean(
             token
@@ -535,6 +591,7 @@ export const AuthProvider = ({
         user,
         profilePhotoUrl,
         profilePhotoVersion,
+        loading,
         authError,
         login,
         logout,

@@ -153,10 +153,7 @@ const attendanceService = {
     }
 
     const response = await api.post(
-      "/attendance/check-in",
-      {
-        employeeId
-      }
+      `/attendance/check-in/${employeeId}`
     );
 
     return response.data;
@@ -176,12 +173,24 @@ const attendanceService = {
     }
 
     const response = await api.post(
-      "/attendance/check-out",
-      {
-        employeeId
-      }
+      `/attendance/check-out/${employeeId}`
     );
 
+    return response.data;
+  },
+
+  async getMyTodayAttendance() {
+    const response = await api.get("/attendance/me/today");
+    return response.data;
+  },
+
+  async checkInForCurrentUser() {
+    const response = await api.post("/attendance/me/check-in");
+    return response.data;
+  },
+
+  async checkOutForCurrentUser() {
+    const response = await api.post("/attendance/me/check-out");
     return response.data;
   }
 

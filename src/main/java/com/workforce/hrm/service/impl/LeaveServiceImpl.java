@@ -2,15 +2,19 @@ package com.workforce.hrm.service.impl;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.workforce.hrm.dto.request.LeaveRequestDTO;
 import com.workforce.hrm.dto.response.LeaveResponseDTO;
+import com.workforce.hrm.dto.response.LeaveSummaryDTO;
 import com.workforce.hrm.entity.Employee;
 import com.workforce.hrm.entity.Leave;
 import com.workforce.hrm.enums.LeaveStatus;
+import com.workforce.hrm.enums.LeaveType;
+import java.time.LocalDate;
 import com.workforce.hrm.mapper.LeaveMapper;
 import com.workforce.hrm.repository.EmployeeRepository;
 import com.workforce.hrm.repository.LeaveRepository;
@@ -85,6 +89,80 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional(readOnly = true)
     public Page<LeaveResponseDTO> getAllLeaves(
+            Pageable pageable) {
+
+        return getLeaves(null, null, null, null, null, null, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<LeaveResponseDTO> getLeaves(
+            Long employeeId,
+            LeaveType leaveType,
+            LeaveStatus status,
+            String search,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Pageable pageable) {
+
+        Long effectiveEmployeeId = resolveEmployeeScope(employeeId);
+        Long companyId = SecurityUtils.isSuperAdmin()
+                ? null
+                : getRequiredCurrentCompanyId();
+        Long departmentId = resolveDepartmentScope(null);
+
+        return leaveRepository.findWorkspaceLeaves(
+                companyId,
+                effectiveEmployeeId,
+                departmentId,
+                leaveType,
+                status,
+                fromDate,
+                toDate,
+                search == null || search.isBlank() ? null : search.trim(),
+                pageable)
+                .map(LeaveMapper::toResponseDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<LeaveResponseDTO> getLeavesForReport(Long employeeId, Long departmentId,
+            LeaveType leaveType, LeaveStatus status, String search, LocalDate fromDate,
+            LocalDate toDate, Pageable pageable) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("From date cannot be after to date");
+        }
+        Long effectiveEmployeeId = resolveEmployeeScope(employeeId);
+        Long companyId = SecurityUtils.isSuperAdmin() ? null : getRequiredCurrentCompanyId();
+        Long effectiveDepartmentId = resolveDepartmentScope(departmentId);
+        return leaveRepository.findWorkspaceLeavesForReport(companyId, effectiveEmployeeId,
+                effectiveDepartmentId, leaveType, status, fromDate, toDate,
+                search == null || search.isBlank() ? null : search.trim(), pageable)
+                .map(LeaveMapper::toResponseDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LeaveSummaryDTO getLeaveSummary() {
+
+        List<LeaveResponseDTO> leaves = getLeaves(
+                null, null, null, null, null, null,
+                Pageable.unpaged()).getContent();
+
+        return new LeaveSummaryDTO(
+                leaves.size(),
+                countByStatus(leaves, LeaveStatus.PENDING),
+                countByStatus(leaves, LeaveStatus.APPROVED),
+                countByStatus(leaves, LeaveStatus.REJECTED));
+    }
+
+    /*
+     * The original list implementation is intentionally replaced by the
+     * filtered endpoint above so every list view follows the same tenant and
+     * employee scope rules.
+     */
+    @Deprecated
+    private Page<LeaveResponseDTO> getAllLeavesLegacy(
             Pageable pageable) {
 
         Page<Leave> leaves;
@@ -239,35 +317,7 @@ public class LeaveServiceImpl implements LeaveService {
     public Page<LeaveResponseDTO> getEmployeeLeaves(
             Long employeeId,
             Pageable pageable) {
-
-        getEmployeeAndValidateAccess(
-                employeeId);
-
-        Page<Leave> leaves;
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            leaves =
-                    leaveRepository
-                            .findByEmployeeEmployeeId(
-                                    employeeId,
-                                    pageable);
-
-        } else {
-
-            Long companyId =
-                    getRequiredCurrentCompanyId();
-
-            leaves =
-                    leaveRepository
-                            .findByEmployeeEmployeeIdAndEmployeeDepartmentCompanyId(
-                                    employeeId,
-                                    companyId,
-                                    pageable);
-        }
-
-        return leaves.map(
-                LeaveMapper::toResponseDTO);
+        return getLeaves(employeeId, null, null, null, null, null, pageable);
     }
 
     // =========================================================
@@ -286,30 +336,7 @@ public class LeaveServiceImpl implements LeaveService {
                     "Leave status is required");
         }
 
-        Page<Leave> leaves;
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            leaves =
-                    leaveRepository.findByStatus(
-                            status,
-                            pageable);
-
-        } else {
-
-            Long companyId =
-                    getRequiredCurrentCompanyId();
-
-            leaves =
-                    leaveRepository
-                            .findByStatusAndEmployeeDepartmentCompanyId(
-                                    status,
-                                    companyId,
-                                    pageable);
-        }
-
-        return leaves.map(
-                LeaveMapper::toResponseDTO);
+        return getLeaves(null, null, status, null, null, null, pageable);
     }
 
     // =========================================================
@@ -401,6 +428,8 @@ public class LeaveServiceImpl implements LeaveService {
 
         validateLeaveAccess(leave);
 
+        ensureEmployeeOwnLeave(leave);
+
         return leave;
     }
 
@@ -464,6 +493,11 @@ public class LeaveServiceImpl implements LeaveService {
 
             throw new AccessDeniedException(
                     "Access denied: leave belongs to another company");
+        }
+
+        if (isManagerRole() && (employee.getDepartment() == null
+                || !requiredManagerDepartmentId().equals(employee.getDepartment().getDepartmentId()))) {
+            throw new AccessDeniedException("Managers can only access leave for their own team");
         }
     }
 
@@ -529,6 +563,19 @@ public class LeaveServiceImpl implements LeaveService {
 
             throw new AccessDeniedException(
                     "Access denied: employee belongs to another company");
+        }
+
+        if (isEmployeeRole()
+                && !getCurrentEmployee().getEmployeeId()
+                        .equals(employee.getEmployeeId())) {
+
+            throw new AccessDeniedException(
+                    "Employees can only access their own leave records");
+        }
+
+        if (isManagerRole() && (employee.getDepartment() == null
+                || !requiredManagerDepartmentId().equals(employee.getDepartment().getDepartmentId()))) {
+            throw new AccessDeniedException("Managers can only access leave for their own team");
         }
 
         return employee;
@@ -637,5 +684,90 @@ public class LeaveServiceImpl implements LeaveService {
         return result.equals("-")
                 ? "Unknown Employee"
                 : result;
+    }
+
+    private Long resolveEmployeeScope(Long requestedEmployeeId) {
+
+        if (!isEmployeeRole()) {
+            return requestedEmployeeId;
+        }
+
+        Long ownEmployeeId = getCurrentEmployee().getEmployeeId();
+
+        if (requestedEmployeeId != null
+                && !ownEmployeeId.equals(requestedEmployeeId)) {
+
+            throw new AccessDeniedException(
+                    "Employees can only view their own leave records");
+        }
+
+        return ownEmployeeId;
+    }
+
+    private Employee getCurrentEmployee() {
+
+        String email = SecurityUtils.getCurrentUserEmail();
+
+        if (email == null || email.isBlank()) {
+            throw new AccessDeniedException(
+                    "Authenticated employee profile is required");
+        }
+
+        return employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "No employee profile is linked to the current user"));
+    }
+
+    private boolean isEmployeeRole() {
+        return "EMPLOYEE".equalsIgnoreCase(
+                SecurityUtils.getCurrentRole());
+    }
+
+    private boolean isManagerRole() {
+        return "MANAGER".equalsIgnoreCase(
+                SecurityUtils.getCurrentRole());
+    }
+
+    private Long resolveDepartmentScope(Long requestedDepartmentId) {
+        if (!isManagerRole()) {
+            return requestedDepartmentId;
+        }
+        Long managerDepartmentId = requiredManagerDepartmentId();
+        if (requestedDepartmentId != null && !managerDepartmentId.equals(requestedDepartmentId)) {
+            throw new AccessDeniedException("Managers can only access leave for their own team");
+        }
+        return managerDepartmentId;
+    }
+
+    private Long requiredManagerDepartmentId() {
+        Employee manager = getCurrentEmployee();
+        if (manager.getDepartment() == null) {
+            throw new AccessDeniedException("The manager has no authorised team scope");
+        }
+        return manager.getDepartment().getDepartmentId();
+    }
+
+    private void ensureEmployeeOwnLeave(Leave leave) {
+
+        if (!isEmployeeRole()) {
+            return;
+        }
+
+        if (leave.getEmployee() == null
+                || !getCurrentEmployee().getEmployeeId()
+                        .equals(leave.getEmployee().getEmployeeId())) {
+
+            throw new AccessDeniedException(
+                    "Employees can only access their own leave records");
+        }
+    }
+
+    private long countByStatus(
+            List<LeaveResponseDTO> leaves,
+            LeaveStatus status) {
+
+        return leaves.stream()
+                .filter(leave -> status.equals(leave.getStatus()))
+                .count();
     }
 }

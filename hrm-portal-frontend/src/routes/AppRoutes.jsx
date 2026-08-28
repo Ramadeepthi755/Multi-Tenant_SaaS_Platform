@@ -37,6 +37,12 @@ AUTH PAGES
 import Login
   from "../pages/auth/Login";
 
+import ForgotPassword
+  from "../pages/auth/ForgotPassword";
+
+import ResetPassword
+  from "../pages/auth/ResetPassword";
+
 import Unauthorized
   from "../pages/auth/Unauthorized";
 
@@ -45,6 +51,9 @@ import SessionExpired
 
 import NotFound
   from "../pages/auth/NotFound";
+
+import Landing
+  from "../pages/public/Landing";
 
 /*
 =========================================================
@@ -172,6 +181,27 @@ REPORTS
 import ReportsDashboard
   from "../pages/reports/ReportsDashboard";
 
+import EmployeeReport
+  from "../pages/reports/EmployeeReport";
+
+import AttendanceReport
+  from "../pages/reports/AttendanceReport";
+
+import LeaveReport
+  from "../pages/reports/LeaveReport";
+
+import PayrollReport
+  from "../pages/reports/PayrollReport";
+
+import DepartmentReport
+  from "../pages/reports/DepartmentReport";
+
+import RecruitmentReport
+  from "../pages/reports/RecruitmentReport";
+
+import PerformanceReport
+  from "../pages/reports/PerformanceReport";
+
 /*
 =========================================================
 PROFILE
@@ -199,6 +229,18 @@ RECRUITMENT
 import RecruitmentDashboard
   from "../pages/recruitment/RecruitmentDashboard";
 
+import JobList
+  from "../pages/recruitment/JobList";
+
+import CandidateList
+  from "../pages/recruitment/CandidateList";
+
+import InterviewList
+  from "../pages/recruitment/InterviewList";
+
+import OfferLetter
+  from "../pages/recruitment/OfferLetter";
+
 /*
 =========================================================
 SECURITY
@@ -223,6 +265,16 @@ const AppRoutes = () => {
         <Route
           path="/login"
           element={<Login />}
+        />
+
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        <Route
+          path="/reset-password"
+          element={<ResetPassword />}
         />
 
         <Route
@@ -255,9 +307,9 @@ const AppRoutes = () => {
 
             <Route
               element={
-                <PermissionRoute
-                  permission="DASHBOARD_VIEW"
-                />
+              <PermissionRoute
+                permission="DASHBOARD_VIEW"
+              />
               }
             >
 
@@ -500,19 +552,9 @@ const AppRoutes = () => {
             ================================================= */}
 
             <Route
-              element={
-                <PermissionRoute
-                  permission="NOTIFICATION_READ"
-                />
-              }
-            >
-
-              <Route
-                path="/notifications"
-                element={<Notifications />}
-              />
-
-            </Route>
+              path="/notifications"
+              element={<Notifications />}
+            />
 
 
             {/* =================================================
@@ -523,6 +565,12 @@ const AppRoutes = () => {
               element={
                 <PermissionRoute
                   permission="DASHBOARD_VIEW"
+                  roles={[
+                    "SUPER_ADMIN",
+                    "COMPANY_ADMIN",
+                    "HR",
+                    "MANAGER"
+                  ]}
                 />
               }
             >
@@ -530,6 +578,41 @@ const AppRoutes = () => {
               <Route
                 path="/reports"
                 element={<ReportsDashboard />}
+              />
+
+              <Route
+                path="/reports/employees"
+                element={<EmployeeReport />}
+              />
+
+              <Route
+                path="/reports/attendance"
+                element={<AttendanceReport />}
+              />
+
+              <Route
+                path="/reports/leave"
+                element={<LeaveReport />}
+              />
+
+              <Route
+                path="/reports/payroll"
+                element={<PayrollReport />}
+              />
+
+              <Route
+                path="/reports/departments"
+                element={<DepartmentReport />}
+              />
+
+              <Route
+                path="/reports/recruitment"
+                element={<RecruitmentReport />}
+              />
+
+              <Route
+                path="/reports/performance"
+                element={<PerformanceReport />}
               />
 
             </Route>
@@ -542,7 +625,12 @@ const AppRoutes = () => {
             <Route
               element={
                 <PermissionRoute
-                  role="SUPER_ADMIN"
+                  roles={[
+                    "SUPER_ADMIN",
+                    "COMPANY_ADMIN",
+                    "HR",
+                    "MANAGER"
+                  ]}
                 />
               }
             >
@@ -550,6 +638,26 @@ const AppRoutes = () => {
               <Route
                 path="/recruitment"
                 element={<RecruitmentDashboard />}
+              />
+
+              <Route
+                path="/recruitment/jobs"
+                element={<JobList />}
+              />
+
+              <Route
+                path="/recruitment/candidates"
+                element={<CandidateList />}
+              />
+
+              <Route
+                path="/recruitment/interviews"
+                element={<InterviewList />}
+              />
+
+              <Route
+                path="/recruitment/offers"
+                element={<OfferLetter />}
               />
 
             </Route>
@@ -607,12 +715,7 @@ const AppRoutes = () => {
 
         <Route
           path="/"
-          element={
-            <Navigate
-              to="/dashboard"
-              replace
-            />
-          }
+          element={<Landing />}
         />
 
 

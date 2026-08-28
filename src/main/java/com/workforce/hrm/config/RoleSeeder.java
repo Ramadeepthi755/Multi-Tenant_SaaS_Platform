@@ -23,22 +23,25 @@ public class RoleSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureRole("SUPER_ADMIN", "System Super Administrator");
+        ensureRole("COMPANY_ADMIN", "Company Administrator");
+        ensureRole("HR", "Human Resources");
+        ensureRole("MANAGER", "Department Manager");
+        ensureRole("EMPLOYEE", "Employee");
 
-        if (roleRepository.count() > 0) {
-            log.info("Roles already exist. Skipping Role Seeder.");
-            return;
-        }
-
-        createRole("SUPER_ADMIN", "System Super Administrator");
-        createRole("COMPANY_ADMIN", "Company Administrator");
-        createRole("HR", "Human Resources");
-        createRole("MANAGER", "Department Manager");
-        createRole("EMPLOYEE", "Employee");
-
-        log.info("Default Roles Created Successfully.");
+        log.info("Default roles verified successfully.");
     }
 
-    private void createRole(String roleName, String description) {
+    /**
+     * Do not use a table-count guard here. A partially initialized database
+     * commonly contains only SUPER_ADMIN, which previously prevented every
+     * other system role from ever being created.
+     */
+    private void ensureRole(String roleName, String description) {
+
+        if (roleRepository.existsByRoleName(roleName)) {
+            return;
+        }
 
         Role role = new Role();
 

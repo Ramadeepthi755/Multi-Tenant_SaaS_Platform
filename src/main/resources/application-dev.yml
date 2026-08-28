@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  flyway:
+    enabled: true
+logging:
+  level:
+    root: INFO
+    com.workforce.hrm: DEBUG
+    org.springframework.security: DEBUG
+server:
+  port: 8080
+app:
+  seed:
+    demo-accounts: ${SEED_DEMO_ACCOUNTS:false}
+    demo-password: ${DEMO_ACCOUNT_PASSWORD:}

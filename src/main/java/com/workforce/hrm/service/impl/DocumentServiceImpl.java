@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -52,6 +55,41 @@ public class DocumentServiceImpl implements DocumentService {
     // =========================================================
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<DocumentResponseDTO> getDocuments(
+            Long employeeId,
+            DocumentType documentType,
+            String search,
+            Pageable pageable) {
+
+        Long effectiveEmployeeId = employeeId;
+
+        if ("EMPLOYEE".equals(SecurityUtils.getCurrentRole())) {
+            effectiveEmployeeId = getCurrentEmployeeId();
+        }
+
+        if (effectiveEmployeeId != null) {
+            getEmployeeAndValidateCompany(effectiveEmployeeId);
+        }
+
+        Long companyId = SecurityUtils.isSuperAdmin()
+                ? null
+                : getRequiredCurrentCompanyId();
+
+        String normalizedSearch = search == null || search.isBlank()
+                ? null
+                : search.trim();
+
+        return documentRepository.searchDocuments(
+                        companyId,
+                        effectiveEmployeeId,
+                        documentType,
+                        normalizedSearch,
+                        pageable)
+                .map(DocumentMapper::toResponseDTO);
+    }
+
+    @Override
     public DocumentResponseDTO uploadDocument(
             Long employeeId,
             DocumentType documentType,
@@ -63,6 +101,14 @@ public class DocumentServiceImpl implements DocumentService {
 
         if (documentType == null) {
             throw new RuntimeException("Document type is required");
+        }
+
+        if ("EMPLOYEE".equals(SecurityUtils.getCurrentRole())) {
+            employeeId = getCurrentEmployeeId();
+        }
+
+        if (employeeId == null) {
+            throw new IllegalArgumentException("Employee is required for document upload");
         }
 
         Employee employee = getEmployeeAndValidateCompany(employeeId);
@@ -326,6 +372,10 @@ public class DocumentServiceImpl implements DocumentService {
                     "Employee is not assigned to a company");
         }
 
+        if (SecurityUtils.isSuperAdmin()) {
+            return employee;
+        }
+
         Long currentCompanyId =
                 SecurityUtils.getCurrentCompanyId();
 
@@ -372,6 +422,10 @@ public class DocumentServiceImpl implements DocumentService {
                     "Document is not assigned to a company");
         }
 
+        if (SecurityUtils.isSuperAdmin()) {
+            return document;
+        }
+
         Long currentCompanyId =
                 SecurityUtils.getCurrentCompanyId();
 
@@ -385,5 +439,23 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         return document;
+    }
+
+    private Long getCurrentEmployeeId() {
+        String email = SecurityUtils.getCurrentUserEmail();
+        if (email == null || email.isBlank()) {
+            throw new AccessDeniedException("Current user has no employee profile");
+        }
+        return employeeRepository.findByEmail(email)
+                .map(Employee::getEmployeeId)
+                .orElseThrow(() -> new AccessDeniedException("Current user has no employee profile"));
+    }
+
+    private Long getRequiredCurrentCompanyId() {
+        Long companyId = SecurityUtils.getCurrentCompanyId();
+        if (companyId == null) {
+            throw new AccessDeniedException("Current user has no company");
+        }
+        return companyId;
     }
 }

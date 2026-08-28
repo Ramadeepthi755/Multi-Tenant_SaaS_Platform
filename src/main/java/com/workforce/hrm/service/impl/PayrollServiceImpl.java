@@ -2,6 +2,8 @@ package com.workforce.hrm.service.impl;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import com.workforce.hrm.repository.PayrollRepository;
 import com.workforce.hrm.security.SecurityUtils;
 import com.workforce.hrm.service.PayrollService;
 import com.workforce.hrm.service.AuditLogService;
+import com.workforce.hrm.util.PdfGenerator;
+import com.workforce.hrm.enums.PayrollStatus;
 
 @Service
 @Transactional
@@ -139,6 +143,16 @@ public class PayrollServiceImpl implements PayrollService {
         return convertToResponseList(payrolls);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PayrollResponseDTO> getPayrollsForReport(Long employeeId, Long departmentId,
+            PayrollStatus status, String month, Integer year, Pageable pageable) {
+        Long companyId = SecurityUtils.isSuperAdmin() ? null : getRequiredCurrentCompanyId();
+        String normalizedMonth = month == null || month.isBlank() ? null : month.trim();
+        return payrollRepository.findWorkspacePayrolls(companyId, employeeId, departmentId,
+                status, normalizedMonth, year, pageable).map(PayrollMapper::toResponseDTO);
+    }
+
     // =========================================================
     // GET PAYROLL BY ID
     // =========================================================
@@ -237,71 +251,7 @@ public class PayrollServiceImpl implements PayrollService {
                 getPayrollAndValidateAccess(
                         payrollId);
 
-        /*
-         * Keep your existing PDF generation logic here
-         * if you already have one.
-         *
-         * This implementation generates a simple text
-         * representation as bytes so the existing
-         * service contract remains valid.
-         */
-
-        String employeeName = "";
-
-        if (payroll.getEmployee() != null) {
-
-            String firstName =
-                    payroll.getEmployee()
-                            .getFirstName() != null
-                            ? payroll.getEmployee()
-                                    .getFirstName()
-                            : "";
-
-            String lastName =
-                    payroll.getEmployee()
-                            .getLastName() != null
-                            ? payroll.getEmployee()
-                                    .getLastName()
-                            : "";
-
-            employeeName =
-                    (firstName + " " + lastName)
-                            .trim();
-        }
-
-        String salarySlip =
-                "SALARY SLIP\n"
-                        + "------------------------------\n"
-                        + "Employee: "
-                        + employeeName
-                        + "\n"
-                        + "Month: "
-                        + payroll.getMonth()
-                        + "\n"
-                        + "Year: "
-                        + payroll.getYear()
-                        + "\n"
-                        + "Basic Salary: "
-                        + payroll.getBasicSalary()
-                        + "\n"
-                        + "Allowances: "
-                        + payroll.getAllowances()
-                        + "\n"
-                        + "Deductions: "
-                        + payroll.getDeductions()
-                        + "\n"
-                        + "Gross Salary: "
-                        + payroll.getGrossSalary()
-                        + "\n"
-                        + "Net Salary: "
-                        + payroll.getNetSalary()
-                        + "\n"
-                        + "Status: "
-                        + payroll.getPayrollStatus()
-                        + "\n";
-
-        return salarySlip.getBytes(
-                java.nio.charset.StandardCharsets.UTF_8);
+        return PdfGenerator.generateSalarySlip(payroll);
     }
 
     // =========================================================

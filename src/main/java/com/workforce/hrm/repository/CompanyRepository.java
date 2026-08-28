@@ -5,8 +5,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 import com.workforce.hrm.entity.Company;
+import com.workforce.hrm.enums.CompanyStatus;
 
 public interface CompanyRepository
         extends JpaRepository<Company, Long> {
@@ -16,6 +18,10 @@ public interface CompanyRepository
     boolean existsByEmail(String email);
 
     boolean existsByCompanyName(String companyName);
+
+    Optional<Company> findByCompanyCode(String companyCode);
+
+    long countByStatus(CompanyStatus status);
 
     @Query("""
         SELECT c

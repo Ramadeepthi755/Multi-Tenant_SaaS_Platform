@@ -41,6 +41,9 @@ export const normalizeNotification = (
   const read =
     notification.read ??
     notification.isRead ??
+    (notification.status
+      ? String(notification.status).toUpperCase() === "READ"
+      : undefined) ??
     false;
 
 

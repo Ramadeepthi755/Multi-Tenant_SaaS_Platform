@@ -3,12 +3,12 @@ import { useAuth } from "../../context/AuthContext";
 import PageLoader from "../common/PageLoader";
 
 const ProtectedRoute = () => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   const location = useLocation();
 
   // Authentication state is still being restored
-  if (token === undefined) {
+  if (loading) {
     return <PageLoader message="Checking session..." />;
   }
 

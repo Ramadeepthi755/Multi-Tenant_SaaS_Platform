@@ -2,6 +2,7 @@ package com.workforce.hrm.service;
 
 import com.workforce.hrm.dto.request.ChangePasswordRequest;
 import com.workforce.hrm.dto.request.ResetPasswordRequest;
+import com.workforce.hrm.dto.request.UpdateOwnProfileRequest;
 import com.workforce.hrm.dto.request.UserRequestDTO;
 import com.workforce.hrm.dto.response.UserResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +39,10 @@ public interface UserService {
 
     UserResponse getCurrentUser(
             String email);
+
+    UserResponse updateCurrentUser(
+            String email,
+            UpdateOwnProfileRequest request);
 
 
     // =========================================================
@@ -106,6 +111,9 @@ public interface UserService {
          MultipartFile file);
 
  String getProfilePhoto(
+         String email);
+
+ void deleteProfilePhoto(
          String email);
 
 Resource loadProfilePhoto(

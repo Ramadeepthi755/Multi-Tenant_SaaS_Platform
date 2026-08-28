@@ -1,5 +1,6 @@
 package com.workforce.hrm.security;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -29,13 +30,22 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtFilter jwtFilter;
+    private final List<String> allowedOrigins;
 
     public SecurityConfig(
             CustomUserDetailsService userDetailsService,
-            JwtFilter jwtFilter) {
+            JwtFilter jwtFilter,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+            String corsAllowedOrigins) {
 
         this.userDetailsService = userDetailsService;
         this.jwtFilter = jwtFilter;
+        this.allowedOrigins = Arrays.stream(
+                        corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
     }
 
     // =========================================================
@@ -245,12 +255,7 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173",
-                        "http://localhost:3000"
-                )
-        );
+        configuration.setAllowedOrigins(allowedOrigins);
 
         configuration.setAllowedMethods(
                 List.of(

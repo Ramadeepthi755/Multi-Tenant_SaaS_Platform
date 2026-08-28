@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Pagination,
   Paper,
@@ -12,10 +11,6 @@ import {
 
 import EventAvailableOutlinedIcon
   from "@mui/icons-material/EventAvailableOutlined";
-
-
-import RefreshOutlinedIcon
-  from "@mui/icons-material/RefreshOutlined";
 
 
 import {
@@ -43,6 +38,9 @@ import ReportStatusChip
 
 import ReportEmptyState
   from "../../components/reports/ReportEmptyState";
+
+import ReportActions
+  from "../../components/reports/ReportActions";
 
 
 import reportService
@@ -237,25 +235,13 @@ const LeaveReport = () => {
         }
 
         actions={
-
-          <Button
-            variant="outlined"
-            startIcon={
-              <RefreshOutlinedIcon />
-            }
-            onClick={
-              loadReport
-            }
-            disabled={
-              loading
-            }
-            sx={{
-              fontWeight: 800
-            }}
-          >
-            Refresh
-          </Button>
-
+          <ReportActions
+            reportType="leave"
+            filters={appliedFilters}
+            onRefresh={loadReport}
+            loading={loading}
+            onError={setError}
+          />
         }
 
       />
@@ -323,6 +309,12 @@ const LeaveReport = () => {
           showLeaveType
 
           showStatus
+
+          statusOptions={[
+            { value: "PENDING", label: "Pending" },
+            { value: "APPROVED", label: "Approved" },
+            { value: "REJECTED", label: "Rejected" }
+          ]}
 
           showFromDate
 

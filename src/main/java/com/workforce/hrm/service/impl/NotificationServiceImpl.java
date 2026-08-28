@@ -14,6 +14,7 @@ import com.workforce.hrm.enums.NotificationStatus;
 import com.workforce.hrm.repository.NotificationRepository;
 import com.workforce.hrm.repository.UserRepository;
 import com.workforce.hrm.service.NotificationService;
+import com.workforce.hrm.exception.ResourceNotFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -82,11 +83,40 @@ public class NotificationServiceImpl implements NotificationService {
 	}
 
 	@Override
+	public NotificationResponseDTO markAsReadForUser(Long notificationId, Long userId) {
+
+		User user = getUser(userId);
+		Notification notification = notificationRepository.findById(notificationId)
+				.orElseThrow(() -> new ResourceNotFoundException("Notification not found."));
+
+		if (!notification.getUser().getUserId().equals(user.getUserId())) {
+			throw new org.springframework.security.access.AccessDeniedException(
+					"You cannot update another user's notification.");
+		}
+
+		notification.setStatus(NotificationStatus.READ);
+		return mapToResponse(notificationRepository.save(notification));
+	}
+
+	@Override
+	public void markAllAsReadForUser(Long userId) {
+		User user = getUser(userId);
+		notificationRepository.findByUserAndStatusOrderByCreatedAtDesc(
+				user, NotificationStatus.UNREAD)
+				.forEach(notification -> notification.setStatus(NotificationStatus.READ));
+	}
+
+	@Override
 	public void deleteNotification(Long notificationId, Long userId) {
 
-		User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found"));
+		User user = getUser(userId);
 
 		notificationRepository.deleteByNotificationIdAndUser(notificationId, user);
+	}
+
+	private User getUser(Long userId) {
+		return userRepository.findById(userId)
+				.orElseThrow(() -> new ResourceNotFoundException("User not found."));
 	}
 
 	private NotificationResponseDTO mapToResponse(Notification notification) {

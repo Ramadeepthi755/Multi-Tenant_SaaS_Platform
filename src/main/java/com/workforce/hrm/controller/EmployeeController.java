@@ -1,22 +1,22 @@
 package com.workforce.hrm.controller;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.workforce.hrm.dto.request.EmployeeRequestDTO;
-import com.workforce.hrm.entity.Employee;
+import com.workforce.hrm.dto.response.EmployeeResponseDTO;
 import com.workforce.hrm.enums.EmployeeStatus;
 import com.workforce.hrm.service.EmployeeService;
 
@@ -46,7 +46,7 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('EMPLOYEE_CREATE')")
-    public Employee createEmployee(
+    public EmployeeResponseDTO createEmployee(
             @Valid @RequestBody EmployeeRequestDTO request) {
 
         return employeeService.createEmployee(request);
@@ -59,9 +59,30 @@ public class EmployeeController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public List<Employee> getAllEmployees() {
+    public Page<EmployeeResponseDTO> getAllEmployees(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) EmployeeStatus status,
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long designationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "employeeId") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction) {
 
-        return employeeService.getAllEmployees();
+        String safeSort = switch (sortBy) {
+            case "id", "employeeId", "employeeCode", "firstName", "lastName",
+                    "email", "joiningDate", "status" ->
+                    "id".equals(sortBy) ? "employeeId" : sortBy;
+            default -> "employeeId";
+        };
+        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction)
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        return employeeService.getEmployees(
+                search, status, companyId, departmentId, designationId,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                        Sort.by(sortDirection, safeSort)));
     }
 
 
@@ -71,7 +92,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public Employee getEmployeeById(
+    public EmployeeResponseDTO getEmployeeById(
             @PathVariable Long id) {
 
         return employeeService.getEmployeeById(id);
@@ -84,13 +105,26 @@ public class EmployeeController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('EMPLOYEE_UPDATE')")
-    public Employee updateEmployee(
+    public EmployeeResponseDTO updateEmployee(
             @PathVariable Long id,
-            @RequestBody Employee employee) {
+            @Valid @RequestBody EmployeeRequestDTO employee) {
 
         return employeeService.updateEmployee(
                 id,
                 employee);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('EMPLOYEE_UPDATE')")
+    public EmployeeResponseDTO updateEmployeeStatus(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, EmployeeStatus> request) {
+
+        EmployeeStatus status = request.get("status");
+        if (status == null) {
+            throw new IllegalArgumentException("Employee status is required");
+        }
+        return employeeService.updateEmployeeStatus(id, status);
     }
 
 
@@ -113,7 +147,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}/profile")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public Employee getEmployeeProfile(
+    public EmployeeResponseDTO getEmployeeProfile(
             @PathVariable Long id) {
 
         return employeeService.getEmployeeProfile(id);
@@ -126,7 +160,7 @@ public class EmployeeController {
 
     @GetMapping("/code/{code}")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public Employee getEmployeeByCode(
+    public EmployeeResponseDTO getEmployeeByCode(
             @PathVariable String code) {
 
         return employeeService.getEmployeeByCode(code);
@@ -139,7 +173,7 @@ public class EmployeeController {
 
     @GetMapping("/department/{departmentId}")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public List<Employee> getEmployeesByDepartment(
+    public java.util.List<EmployeeResponseDTO> getEmployeesByDepartment(
             @PathVariable Long departmentId) {
 
         return employeeService
@@ -153,7 +187,7 @@ public class EmployeeController {
 
     @GetMapping("/status/{status}")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public List<Employee> getEmployeesByStatus(
+    public java.util.List<EmployeeResponseDTO> getEmployeesByStatus(
             @PathVariable EmployeeStatus status) {
 
         return employeeService
@@ -167,12 +201,12 @@ public class EmployeeController {
 
     @GetMapping("/search")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
-    public Page<Employee> searchEmployees(
+    public Page<EmployeeResponseDTO> searchEmployees(
             @RequestParam String keyword,
-            Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
         return employeeService.searchEmployees(
-                keyword,
-                pageable);
+                keyword, PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100)));
     }
 }

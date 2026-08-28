@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -14,9 +14,14 @@ import {
 import { resetPassword } from "../../services/authService";
 
 const ResetPassword = () => {
-  const [token, setToken] = useState("");
+  const [searchParams] = useSearchParams();
+  const [token, setToken] = useState(
+    () => searchParams.get("token") || ""
+  );
 
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [message, setMessage] = useState("");
 
@@ -28,18 +33,38 @@ const ResetPassword = () => {
     setMessage("");
     setError("");
 
+    if (!token.trim()) {
+      setError("A password reset token is required.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Your new password must contain at least 8 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+
     try {
+      setLoading(true);
       const response = await resetPassword(
-        token,
+        token.trim(),
         password
       );
 
       setMessage(response);
+      setPassword("");
+      setConfirmPassword("");
     } catch (err) {
       setError(
         err.response?.data?.message ||
           "Reset Failed"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,10 +75,10 @@ const ResetPassword = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#f4f6f9",
+        background: "radial-gradient(circle at top left, rgba(37,99,235,.14), transparent 35%), #f8fafc",
       }}
     >
-      <Paper sx={{ p: 4, width: 420 }}>
+      <Paper sx={{ p: { xs: 3, sm: 4 }, width: "100%", maxWidth: 440, border: "1px solid #e2e8f0" }}>
         <Typography variant="h5" mb={3}>
           Reset Password
         </Typography>
@@ -90,15 +115,26 @@ const ResetPassword = () => {
               }
             />
 
+            <TextField
+              label="Confirm New Password"
+              type="password"
+              fullWidth
+              value={confirmPassword}
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
+            />
+
             <Button
               variant="contained"
               type="submit"
+              disabled={loading}
             >
-              Reset Password
+              {loading ? "Resetting…" : "Reset Password"}
             </Button>
 
-            <Link to="/">
-              Back to Login
+            <Link to="/login">
+              Back to sign in
             </Link>
           </Stack>
         </Box>

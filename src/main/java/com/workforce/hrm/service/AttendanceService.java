@@ -3,8 +3,13 @@ package com.workforce.hrm.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.workforce.hrm.dto.request.AttendanceRequestDTO;
 import com.workforce.hrm.dto.response.AttendanceResponseDTO;
+import com.workforce.hrm.dto.response.AttendanceSummaryDTO;
+import com.workforce.hrm.enums.AttendanceStatus;
 
 public interface AttendanceService {
 
@@ -19,6 +24,25 @@ public interface AttendanceService {
     // =========================================================
     // GET ALL
     // =========================================================
+
+    Page<AttendanceResponseDTO> getAttendance(
+            LocalDate date,
+            Long employeeId,
+            Long departmentId,
+            AttendanceStatus status,
+            String search,
+            Pageable pageable);
+
+    Page<AttendanceResponseDTO> getAttendanceForDateRange(
+            LocalDate fromDate,
+            LocalDate toDate,
+            Long employeeId,
+            Long departmentId,
+            AttendanceStatus status,
+            String search,
+            Pageable pageable);
+
+    AttendanceSummaryDTO getAttendanceSummary(LocalDate date);
 
     List<AttendanceResponseDTO> getAllAttendance();
 
@@ -78,4 +102,10 @@ public interface AttendanceService {
 
     AttendanceResponseDTO checkOut(
             Long employeeId);
+
+    AttendanceResponseDTO checkInCurrentUser();
+
+    AttendanceResponseDTO checkOutCurrentUser();
+
+    AttendanceResponseDTO getCurrentUserTodayAttendance();
 }

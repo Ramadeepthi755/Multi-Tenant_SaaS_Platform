@@ -27,6 +27,12 @@ import BusinessOutlinedIcon
 import AssessmentOutlinedIcon
   from "@mui/icons-material/AssessmentOutlined";
 
+import WorkOutlineOutlinedIcon
+  from "@mui/icons-material/WorkOutlineOutlined";
+
+import TrendingUpOutlinedIcon
+  from "@mui/icons-material/TrendingUpOutlined";
+
 
 import ArrowForwardOutlinedIcon
   from "@mui/icons-material/ArrowForwardOutlined";
@@ -219,6 +225,36 @@ const ReportsDashboard = () => {
 
       icon:
         <BusinessOutlinedIcon />
+
+    },
+
+    {
+      title:
+        "Recruitment Report",
+
+      description:
+        "Candidate pipeline activity, statuses and application volume.",
+
+      path:
+        "/reports/recruitment",
+
+      icon:
+        <WorkOutlineOutlinedIcon />
+
+    },
+
+    {
+      title:
+        "Performance Report",
+
+      description:
+        "Persisted performance-review results by employee and review cycle.",
+
+      path:
+        "/reports/performance",
+
+      icon:
+        <TrendingUpOutlinedIcon />
 
     }
 

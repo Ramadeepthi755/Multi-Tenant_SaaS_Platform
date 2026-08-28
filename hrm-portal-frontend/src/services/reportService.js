@@ -267,6 +267,58 @@ async getWorkforceOverview() {
     return response.data;
   },
 
+  async getRecruitmentReport({
+    page = 0,
+    size = 20,
+    search = "",
+    status = "",
+    fromDate = "",
+    toDate = ""
+  } = {}) {
+
+    const params = { page, size };
+
+    if (search) params.search = search;
+    if (status) params.status = status;
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+
+    const response = await api.get(
+      "/reports/recruitment",
+      { params }
+    );
+
+    return response.data;
+  },
+
+  async getPerformanceReport({
+    page = 0,
+    size = 20,
+    search = "",
+    employeeId = "",
+    departmentId = "",
+    status = "",
+    fromDate = "",
+    toDate = ""
+  } = {}) {
+
+    const params = { page, size };
+
+    if (search) params.search = search;
+    if (employeeId) params.employeeId = employeeId;
+    if (departmentId) params.departmentId = departmentId;
+    if (status) params.status = status;
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+
+    const response = await api.get(
+      "/reports/performance",
+      { params }
+    );
+
+    return response.data;
+  },
+
 
   // =========================================================
   // EXPORT
@@ -275,7 +327,7 @@ async getWorkforceOverview() {
   async exportReport(
     reportType,
     params = {},
-    format = "xlsx"
+    format = "csv"
   ) {
 
     if (!reportType) {

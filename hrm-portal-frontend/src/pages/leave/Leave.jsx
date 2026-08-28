@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import LeaveList from "./LeaveList";
+import LeaveManagement from "./LeaveManagement";
 
 const Leave = () => {
   return (
@@ -9,7 +9,7 @@ const Leave = () => {
         mt: 2,
       }}
     >
-      <LeaveList />
+      <LeaveManagement />
     </Box>
   );
 };

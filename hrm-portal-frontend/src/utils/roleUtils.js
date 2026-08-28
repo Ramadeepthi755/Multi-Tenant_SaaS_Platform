@@ -148,8 +148,9 @@ export const normalizeRole = (
     active:
       role.active ??
       role.enabled ??
-      role.status === "ACTIVE" ??
-      true,
+      (role.status
+        ? role.status === "ACTIVE"
+        : true),
 
     systemRole:
       role.systemRole ??

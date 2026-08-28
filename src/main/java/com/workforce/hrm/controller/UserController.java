@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.workforce.hrm.dto.request.ChangePasswordRequest;
+import com.workforce.hrm.dto.request.UpdateOwnProfileRequest;
 import com.workforce.hrm.dto.request.UserRequestDTO;
 import com.workforce.hrm.dto.response.UserResponse;
 import com.workforce.hrm.service.UserService;
@@ -102,6 +103,22 @@ public class UserController {
                         authentication.getName());
 
         return ResponseEntity.ok(response);
+    }
+
+    // =========================================================
+    // UPDATE CURRENT LOGGED-IN USER
+    // =========================================================
+
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserResponse> updateCurrentUser(
+            Authentication authentication,
+            @Valid @RequestBody UpdateOwnProfileRequest request) {
+
+        return ResponseEntity.ok(
+                userService.updateCurrentUser(
+                        authentication.getName(),
+                        request));
     }
 
 
@@ -232,6 +249,22 @@ public class UserController {
                      file);
 
      return ResponseEntity.ok(fileName);
+ }
+
+
+ // =========================================================
+ // DELETE OWN PROFILE PHOTO
+ // =========================================================
+
+ @DeleteMapping("/me/profile-photo")
+ @PreAuthorize("isAuthenticated()")
+ public ResponseEntity<Void> deleteProfilePhoto(
+         Authentication authentication) {
+
+     userService.deleteProfilePhoto(
+             authentication.getName());
+
+     return ResponseEntity.noContent().build();
  }
 
 

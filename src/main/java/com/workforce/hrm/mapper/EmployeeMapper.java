@@ -6,6 +6,8 @@ import com.workforce.hrm.entity.Department;
 import com.workforce.hrm.entity.Designation;
 import com.workforce.hrm.entity.Employee;
 
+import java.time.LocalDate;
+
 public class EmployeeMapper {
 
     private EmployeeMapper() {
@@ -50,21 +52,37 @@ public class EmployeeMapper {
         dto.setLastName(employee.getLastName());
         dto.setEmail(employee.getEmail());
         dto.setPhone(employee.getPhone());
+        dto.setGender(employee.getGender());
         dto.setSalary(employee.getSalary());
+
+        dto.setDateOfBirth(formatDate(employee.getDateOfBirth()));
+        dto.setJoiningDate(formatDate(employee.getJoiningDate()));
+        dto.setResignationDate(formatDate(employee.getResignationDate()));
 
         if (employee.getStatus() != null) {
             dto.setStatus(employee.getStatus().name());
         }
 
         if (employee.getDepartment() != null) {
+            dto.setDepartmentId(employee.getDepartment().getDepartmentId());
             dto.setDepartmentName(employee.getDepartment().getDepartmentName());
         }
 
         if (employee.getDesignation() != null) {
+            dto.setDesignationId(employee.getDesignation().getDesignationId());
             dto.setDesignationName(employee.getDesignation().getDesignationName());
         }
 
+        if (employee.getCompany() != null) {
+            dto.setCompanyId(employee.getCompany().getId());
+            dto.setCompanyName(employee.getCompany().getCompanyName());
+        }
+
         return dto;
+    }
+
+    private static String formatDate(LocalDate value) {
+        return value == null ? null : value.toString();
     }
 
     /**

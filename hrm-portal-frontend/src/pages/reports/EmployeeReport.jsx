@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Pagination,
   Paper,
@@ -12,10 +11,6 @@ import {
 
 import PeopleOutlinedIcon
   from "@mui/icons-material/PeopleOutlined";
-
-
-import RefreshOutlinedIcon
-  from "@mui/icons-material/RefreshOutlined";
 
 
 import {
@@ -43,6 +38,9 @@ import ReportStatusChip
 
 import ReportEmptyState
   from "../../components/reports/ReportEmptyState";
+
+import ReportActions
+  from "../../components/reports/ReportActions";
 
 
 import reportService
@@ -228,25 +226,13 @@ const EmployeeReport = () => {
         }
 
         actions={
-
-          <Button
-            variant="outlined"
-            startIcon={
-              <RefreshOutlinedIcon />
-            }
-            onClick={
-              loadReport
-            }
-            disabled={
-              loading
-            }
-            sx={{
-              fontWeight: 800
-            }}
-          >
-            Refresh
-          </Button>
-
+          <ReportActions
+            reportType="employees"
+            filters={appliedFilters}
+            onRefresh={loadReport}
+            loading={loading}
+            onError={setError}
+          />
         }
 
       />
@@ -314,6 +300,11 @@ const EmployeeReport = () => {
           showDesignation
 
           showStatus
+
+          statusOptions={[
+            { value: "ACTIVE", label: "Active" },
+            { value: "INACTIVE", label: "Inactive" }
+          ]}
 
           showFromDate
 

@@ -25,6 +25,12 @@ public class AttendanceResponseDTO {
 
     private String employeeName;
 
+    private String employeeCode;
+
+    private Long departmentId;
+
+    private String departmentName;
+
     public Long getAttendanceId() {
         return attendanceId;
     }
@@ -95,5 +101,29 @@ public class AttendanceResponseDTO {
 
     public void setEmployeeName(String employeeName) {
         this.employeeName = employeeName;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public void setEmployeeCode(String employeeCode) {
+        this.employeeCode = employeeCode;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
     }
 }

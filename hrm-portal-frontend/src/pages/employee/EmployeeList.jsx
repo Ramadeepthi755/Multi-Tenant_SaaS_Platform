@@ -356,19 +356,21 @@ const EmployeeList = () => {
 
           setDepartments(
             Array.isArray(
-              departmentsResponse?.content
+              departmentsResponse
             )
-              ? departmentsResponse.content
-              : []
+              ? departmentsResponse
+              : Array.isArray(departmentsResponse?.content)
+                ? departmentsResponse.content
+                : []
           );
 
 
           setDesignations(
-            Array.isArray(
-              designationsResponse?.content
-            )
-              ? designationsResponse.content
-              : []
+            Array.isArray(designationsResponse)
+              ? designationsResponse
+              : Array.isArray(designationsResponse?.content)
+                ? designationsResponse.content
+                : []
           );
 
         } catch (requestError) {
@@ -839,7 +841,7 @@ const EmployeeList = () => {
       setToast({
         open: true,
         message:
-          "Employee deleted successfully.",
+          "Employee deactivated successfully.",
         severity:
           "success"
       });
@@ -860,7 +862,7 @@ const EmployeeList = () => {
       setDeleteError(
         getEmployeeErrorMessage(
           requestError,
-          "Unable to delete employee."
+          "Unable to deactivate employee."
         )
       );
 
@@ -1375,10 +1377,10 @@ const EmployeeList = () => {
 
                 <MenuItem
                   key={
-                    department.id
+                    department.departmentId
                   }
                   value={
-                    department.id
+                    department.departmentId
                   }
                 >
                   {
@@ -1425,10 +1427,10 @@ const EmployeeList = () => {
 
                 <MenuItem
                   key={
-                    designation.id
+                    designation.designationId
                   }
                   value={
-                    designation.id
+                    designation.designationId
                   }
                 >
                   {

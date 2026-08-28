@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Pagination,
   Paper,
@@ -12,10 +11,6 @@ import {
 
 import AccessTimeOutlinedIcon
   from "@mui/icons-material/AccessTimeOutlined";
-
-
-import RefreshOutlinedIcon
-  from "@mui/icons-material/RefreshOutlined";
 
 
 import {
@@ -43,6 +38,9 @@ import ReportStatusChip
 
 import ReportEmptyState
   from "../../components/reports/ReportEmptyState";
+
+import ReportActions
+  from "../../components/reports/ReportActions";
 
 
 import reportService
@@ -232,25 +230,13 @@ const AttendanceReport = () => {
         }
 
         actions={
-
-          <Button
-            variant="outlined"
-            startIcon={
-              <RefreshOutlinedIcon />
-            }
-            onClick={
-              loadReport
-            }
-            disabled={
-              loading
-            }
-            sx={{
-              fontWeight: 800
-            }}
-          >
-            Refresh
-          </Button>
-
+          <ReportActions
+            reportType="attendance"
+            filters={appliedFilters}
+            onRefresh={loadReport}
+            loading={loading}
+            onError={setError}
+          />
         }
 
       />
@@ -316,6 +302,14 @@ const AttendanceReport = () => {
           showDepartment
 
           showStatus
+
+          statusOptions={[
+            { value: "PRESENT", label: "Present" },
+            { value: "ABSENT", label: "Absent" },
+            { value: "HALF_DAY", label: "Half day" },
+            { value: "WORK_FROM_HOME", label: "Work from home" },
+            { value: "ON_LEAVE", label: "On leave" }
+          ]}
 
           showFromDate
 

@@ -17,6 +17,9 @@ import {
   updateJob,
 } from "../../services/recruitmentService";
 
+import departmentService
+  from "../../services/departmentService";
+
 const employmentTypes = [
   "FULL_TIME",
   "PART_TIME",
@@ -51,6 +54,12 @@ const JobDialog = ({
   const [formData, setFormData] =
     useState(initialState);
 
+  const [departments, setDepartments] =
+    useState([]);
+
+  const [departmentError, setDepartmentError] =
+    useState("");
+
   useEffect(() => {
 
     if (job) {
@@ -83,6 +92,41 @@ const JobDialog = ({
     }
 
   }, [job]);
+
+  useEffect(() => {
+
+    const loadDepartments = async () => {
+
+      try {
+
+        setDepartmentError("");
+
+        const response =
+          await departmentService
+            .getDepartments();
+
+        setDepartments(
+          Array.isArray(response)
+            ? response
+            : response?.content || []
+        );
+
+      } catch (error) {
+
+        setDepartmentError(
+          error?.response?.data?.message ||
+          "Unable to load departments."
+        );
+
+      }
+
+    };
+
+    if (open) {
+      loadDepartments();
+    }
+
+  }, [open]);
 
   const handleChange = (e) => {
 
@@ -166,12 +210,34 @@ const JobDialog = ({
           <Grid item xs={12} md={6}>
 
             <TextField
+              select
               fullWidth
-              label="Department ID"
+              label="Department"
               name="departmentId"
               value={formData.departmentId}
               onChange={handleChange}
-            />
+              error={Boolean(departmentError)}
+              helperText={departmentError}
+            >
+
+              <MenuItem value="">
+                No department
+              </MenuItem>
+
+              {departments.map(
+                department => (
+
+                  <MenuItem
+                    key={department.departmentId}
+                    value={department.departmentId}
+                  >
+                    {department.departmentName}
+                  </MenuItem>
+
+                )
+              )}
+
+            </TextField>
 
           </Grid>
 

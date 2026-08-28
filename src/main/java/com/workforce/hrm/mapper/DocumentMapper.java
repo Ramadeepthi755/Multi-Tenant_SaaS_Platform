@@ -24,6 +24,20 @@ public class DocumentMapper {
         dto.setDocumentType(document.getDocumentType());
         dto.setUploadDate(document.getUploadDate());
 
+        if (document.getEmployee() != null) {
+            dto.setEmployeeId(document.getEmployee().getEmployeeId());
+            dto.setEmployeeName((safe(document.getEmployee().getFirstName()) + " "
+                    + safe(document.getEmployee().getLastName())).trim());
+        }
+
+        if (document.getCompany() != null) {
+            dto.setCompanyId(document.getCompany().getId());
+        }
+
         return dto;
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 }

@@ -48,8 +48,14 @@ public class DepartmentMapper {
         dto.setStatus(department.getStatus());
 
         if (department.getCompany() != null) {
+            dto.setCompanyId(department.getCompany().getId());
             dto.setCompanyName(department.getCompany().getCompanyName());
         }
+
+        dto.setEmployeeCount(
+                department.getEmployees() == null
+                        ? 0L
+                        : (long) department.getEmployees().size());
 
         return dto;
     }

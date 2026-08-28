@@ -26,6 +26,8 @@ public class Company {
 
 	private String phone;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
 	private CompanyStatus status ;
 
 	private boolean isActive;

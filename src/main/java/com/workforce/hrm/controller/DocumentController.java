@@ -2,6 +2,8 @@ package com.workforce.hrm.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,6 +36,32 @@ public class DocumentController {
     // =========================================================
     // UPLOAD DOCUMENT
     // =========================================================
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('DOCUMENT_UPLOAD','DOCUMENT_DOWNLOAD','DOCUMENT_DELETE')")
+    public ResponseEntity<Page<DocumentResponseDTO>> getDocuments(
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) DocumentType documentType,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return ResponseEntity.ok(documentService.getDocuments(
+                employeeId,
+                documentType,
+                search,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('DOCUMENT_UPLOAD')")
+    public ResponseEntity<DocumentResponseDTO> uploadDocumentForCurrentScope(
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam DocumentType documentType,
+            @RequestPart("file") MultipartFile file) {
+
+        return ResponseEntity.ok(documentService.uploadDocument(employeeId, documentType, file));
+    }
 
     @PostMapping(
             value = "/upload/{employeeId}",
@@ -107,7 +135,7 @@ public class DocumentController {
     // DOWNLOAD DOCUMENT
     // =========================================================
 
-    @GetMapping("/download/{documentId}")
+    @GetMapping({ "/download/{documentId}", "/{documentId}/download" })
     @PreAuthorize("hasAuthority('DOCUMENT_DOWNLOAD')")
     public ResponseEntity<byte[]> downloadDocument(
             @PathVariable Long documentId) {

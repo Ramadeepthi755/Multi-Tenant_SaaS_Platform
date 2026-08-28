@@ -1,36 +1,39 @@
 package com.workforce.hrm.service.impl;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.mail.MailException;
 
 import com.workforce.hrm.service.EmailService;
 
 @Service
 public class EmailServiceImpl implements EmailService {
 
-	@Autowired
-	private JavaMailSender mailSender;
+	private final JavaMailSender mailSender;
+	private final String fromAddress;
+
+	public EmailServiceImpl(
+			JavaMailSender mailSender,
+			@Value("${app.mail.from:no-reply@hrm-portal.local}") String fromAddress) {
+		this.mailSender = mailSender;
+		this.fromAddress = fromAddress;
+	}
 
 	@Override
 	public void sendEmail(String to, String subject, String body) {
 
-		System.out.println("TO      : " + to);
-		System.out.println("SUBJECT : " + subject);
-		System.out.println("BODY    : " + body);
-
 		SimpleMailMessage message = new SimpleMailMessage();
-		message.setFrom("ramadeepthibadireddy@gmail.com");
+		message.setFrom(fromAddress);
 		message.setTo(to);
 		message.setSubject(subject);
 		message.setText(body);
 
-		System.out.println("Actual TO   = " + java.util.Arrays.toString(message.getTo()));
-		System.out.println("Actual FROM = " + message.getFrom());
-
-		mailSender.send(message);
-
-		System.out.println("EMAIL SENT SUCCESSFULLY");
+		try {
+			mailSender.send(message);
+		} catch (MailException exception) {
+			throw new IllegalStateException("Email delivery failed.", exception);
+		}
 	}
 }

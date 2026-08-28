@@ -14,11 +14,31 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MultipartException;
 
 import com.workforce.hrm.dto.response.ErrorResponse;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    // =========================================================
+    // MULTIPART REQUESTS
+    // =========================================================
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> handleMultipartException(
+            MultipartException ex) {
+
+        ErrorResponse response = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "The uploaded file is missing, malformed, or exceeds the allowed size.",
+                null);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 
     // =========================================================
     // VALIDATION ERROR

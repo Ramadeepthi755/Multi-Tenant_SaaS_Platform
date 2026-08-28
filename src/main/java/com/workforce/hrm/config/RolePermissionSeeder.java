@@ -57,11 +57,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
         if (role == null)
             return;
 
-        if (!role.getPermissions().isEmpty()) {
-            log.info("SUPER_ADMIN permissions already assigned.");
-            return;
-        }
-
         role.setPermissions(new HashSet<>(permissionRepository.findAll()));
 
         roleRepository.save(role);
@@ -78,11 +73,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
         if (role == null)
             return;
-
-        if (!role.getPermissions().isEmpty()) {
-            log.info("COMPANY_ADMIN permissions already assigned.");
-            return;
-        }
 
         Set<String> permissions = Set.of(
 
@@ -112,6 +102,17 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
                 "PAYROLL_READ",
 
+                "HOLIDAY_CREATE",
+                "HOLIDAY_READ",
+                "HOLIDAY_UPDATE",
+                "HOLIDAY_DELETE",
+
+                "DOCUMENT_UPLOAD",
+                "DOCUMENT_DOWNLOAD",
+                "DOCUMENT_DELETE",
+
+                "NOTIFICATION_READ",
+
                 "DASHBOARD_VIEW"
 
         );
@@ -131,12 +132,13 @@ public class RolePermissionSeeder implements CommandLineRunner {
         if (role == null)
             return;
 
-        if (!role.getPermissions().isEmpty()) {
-            log.info("HR permissions already assigned.");
-            return;
-        }
-
         Set<String> permissions = Set.of(
+
+                "COMPANY_READ",
+
+                "DEPARTMENT_READ",
+
+                "DESIGNATION_READ",
 
                 "EMPLOYEE_CREATE",
                 "EMPLOYEE_READ",
@@ -151,6 +153,12 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "LEAVE_REJECT",
 
                 "DOCUMENT_UPLOAD",
+                "DOCUMENT_DOWNLOAD",
+                "DOCUMENT_DELETE",
+
+                "HOLIDAY_READ",
+
+                "NOTIFICATION_READ",
 
                 "PAYROLL_READ",
 
@@ -173,11 +181,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
         if (role == null)
             return;
 
-        if (!role.getPermissions().isEmpty()) {
-            log.info("MANAGER permissions already assigned.");
-            return;
-        }
-
         Set<String> permissions = Set.of(
 
                 "EMPLOYEE_READ",
@@ -187,6 +190,12 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "LEAVE_READ",
                 "LEAVE_APPROVE",
                 "LEAVE_REJECT",
+
+                "DOCUMENT_DOWNLOAD",
+
+                "HOLIDAY_READ",
+
+                "NOTIFICATION_READ",
 
                 "DASHBOARD_VIEW"
 
@@ -207,11 +216,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
         if (role == null)
             return;
 
-        if (!role.getPermissions().isEmpty()) {
-            log.info("EMPLOYEE permissions already assigned.");
-            return;
-        }
-
         Set<String> permissions = Set.of(
 
                 "ATTENDANCE_READ",
@@ -222,7 +226,11 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "DOCUMENT_UPLOAD",
                 "DOCUMENT_DOWNLOAD",
 
+                "NOTIFICATION_READ",
+
                 "PAYROLL_READ",
+
+                "HOLIDAY_READ",
 
                 "DASHBOARD_VIEW"
 

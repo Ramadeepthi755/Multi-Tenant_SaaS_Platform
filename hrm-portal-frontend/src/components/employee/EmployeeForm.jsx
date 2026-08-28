@@ -316,6 +316,15 @@ const EmployeeForm = ({
 
 
     if (
+      !form.employeeCode.trim()
+    ) {
+
+      next.employeeCode =
+        "Employee ID is required.";
+    }
+
+
+    if (
       !form.firstName.trim()
     ) {
 
@@ -461,42 +470,14 @@ const EmployeeForm = ({
       joiningDate:
         form.joiningDate,
 
-      companyId:
-        Number(form.companyId),
-
       departmentId:
         Number(form.departmentId),
 
       designationId:
         Number(form.designationId),
 
-      reportingManagerId:
-        form.reportingManagerId
-          ? Number(
-              form.reportingManagerId
-            )
-          : null,
-
-      employmentType:
-        form.employmentType,
-
       status:
-        form.status,
-
-      address:
-        form.address.trim(),
-
-      city:
-        form.city.trim(),
-
-      state:
-        form.state.trim(),
-
-      country:
-        form.country.trim(),
-
-      postalCode:
-        form.postalCode.trim()
+        form.status
 
     });
   };
@@ -630,10 +611,13 @@ const EmployeeForm = ({
               disabled={
                 mode === "edit"
               }
+              error={
+                Boolean(
+                  errors.employeeCode
+                )
+              }
               helperText={
-                mode === "create"
-                  ? "Leave blank if backend generates it."
-                  : ""
+                errors.employeeCode
               }
             />
 
@@ -844,10 +828,10 @@ const EmployeeForm = ({
 
                 <MenuItem
                   key={
-                    department.id
+                    department.departmentId
                   }
                   value={
-                    department.id
+                    department.departmentId
                   }
                 >
                   {
@@ -900,10 +884,10 @@ const EmployeeForm = ({
 
                 <MenuItem
                   key={
-                    designation.id
+                    designation.designationId
                   }
                   value={
-                    designation.id
+                    designation.designationId
                   }
                 >
                   {

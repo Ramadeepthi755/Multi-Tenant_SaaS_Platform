@@ -53,4 +53,8 @@ public interface DepartmentRepository
     boolean existsByDepartmentCodeAndCompanyId(
             String departmentCode,
             Long companyId);
+
+    Optional<Department> findByDepartmentCodeAndCompanyId(
+            String departmentCode,
+            Long companyId);
 }

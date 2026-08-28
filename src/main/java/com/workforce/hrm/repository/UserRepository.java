@@ -66,4 +66,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("userId") Long userId,
             @Param("companyId") Long companyId
     );
+
+    @Query("""
+            SELECT u.role.roleName, COUNT(u)
+            FROM User u
+            GROUP BY u.role.roleName
+            """)
+    List<Object[]> countUsersByRole();
 }

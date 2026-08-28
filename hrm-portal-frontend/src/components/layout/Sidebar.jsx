@@ -91,6 +91,23 @@ const Sidebar = ({
 
       }
 
+      if (
+        Array.isArray(
+          item.roles
+        ) &&
+        item.roles.length > 0 &&
+        !item.roles.some(
+          role =>
+            hasRole(
+              role
+            )
+        )
+      ) {
+
+        return false;
+
+      }
+
 
       /*
       -------------------------------------------------------

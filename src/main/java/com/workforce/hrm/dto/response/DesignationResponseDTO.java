@@ -14,6 +14,8 @@ public class DesignationResponseDTO {
 
     private DesignationStatus status;
 
+    private Long departmentId;
+
     private String departmentName;
 
     public Long getDesignationId() {
@@ -62,5 +64,13 @@ public class DesignationResponseDTO {
 
     public void setDepartmentName(String departmentName) {
         this.departmentName = departmentName;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
     }
 }

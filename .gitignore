@@ -1,5 +1,7 @@
 HELP.md
 target/
+# Runtime document and profile-photo storage; never commit employee files.
+uploads/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

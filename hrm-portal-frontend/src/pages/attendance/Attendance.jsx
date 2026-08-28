@@ -1,13 +1,10 @@
-import { Box, Typography } from "@mui/material";
-import AttendanceList from "./AttendanceList";
+import { Box } from "@mui/material";
+import AttendanceManagement from "../../components/attendance/AttendanceManagement";
 
 const Attendance = () => {
-  console.log("Attendance.jsx Loaded");
-
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4">Attendance Page Working</Typography>
-      <AttendanceList />
+    <Box sx={{ width: "100%", mt: 1 }}>
+      <AttendanceManagement />
     </Box>
   );
 };

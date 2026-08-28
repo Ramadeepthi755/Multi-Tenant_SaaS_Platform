@@ -8,7 +8,9 @@ public class DashboardResponseDTO {
     private Long totalDepartments;
     private Long totalDesignations;
     private Long todayAttendance;
+    private Long todayPresent;
     private Long todayLeaves;
+    private Long pendingLeaves;
     private BigDecimal currentMonthPayroll;
     private Long totalHolidays;
 
@@ -65,12 +67,28 @@ public class DashboardResponseDTO {
 		this.todayAttendance = todayAttendance;
 	}
 
+	public Long getTodayPresent() {
+		return todayPresent;
+	}
+
+	public void setTodayPresent(Long todayPresent) {
+		this.todayPresent = todayPresent;
+	}
+
 	public Long getTodayLeaves() {
 		return todayLeaves;
 	}
 
 	public void setTodayLeaves(Long todayLeaves) {
 		this.todayLeaves = todayLeaves;
+	}
+
+	public Long getPendingLeaves() {
+		return pendingLeaves;
+	}
+
+	public void setPendingLeaves(Long pendingLeaves) {
+		this.pendingLeaves = pendingLeaves;
 	}
 
 	public BigDecimal getCurrentMonthPayroll() {

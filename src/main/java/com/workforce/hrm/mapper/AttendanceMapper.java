@@ -53,11 +53,17 @@ public class AttendanceMapper {
 
         if (attendance.getEmployee() != null) {
             dto.setEmployeeId(attendance.getEmployee().getEmployeeId());
+            dto.setEmployeeCode(attendance.getEmployee().getEmployeeCode());
             dto.setEmployeeName(
                     attendance.getEmployee().getFirstName() + " "
                     + (attendance.getEmployee().getLastName() == null
                         ? ""
                         : attendance.getEmployee().getLastName()));
+
+            if (attendance.getEmployee().getDepartment() != null) {
+                dto.setDepartmentId(attendance.getEmployee().getDepartment().getDepartmentId());
+                dto.setDepartmentName(attendance.getEmployee().getDepartment().getDepartmentName());
+            }
         }
 
         return dto;

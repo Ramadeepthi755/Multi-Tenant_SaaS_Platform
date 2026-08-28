@@ -101,16 +101,13 @@ const leaveService = {
       );
     }
 
-    const response = await api.post(
-      "/leave",
-      {
-        employeeId,
-        leaveType,
-        fromDate,
-        toDate,
-        reason
-      }
-    );
+    const response = await api.post("/leave", {
+      employeeId,
+      leaveType,
+      startDate: fromDate,
+      endDate: toDate,
+      reason
+    });
 
     return response.data;
   },
@@ -144,7 +141,7 @@ const leaveService = {
 
   async rejectLeave(
     leaveId,
-    rejectionReason
+    _rejectionReason
   ) {
 
     if (!leaveId) {
@@ -154,10 +151,7 @@ const leaveService = {
     }
 
     const response = await api.put(
-      `/leave/${leaveId}/reject`,
-      {
-        rejectionReason
-      }
+      `/leave/${leaveId}/reject`
     );
 
     return response.data;
@@ -178,11 +172,9 @@ const leaveService = {
       );
     }
 
-    const response = await api.put(
-      `/leave/${leaveId}/cancel`
+    throw new Error(
+      "Cancelling leave is not available in the current backend."
     );
-
-    return response.data;
   },
 
 
@@ -226,11 +218,41 @@ const leaveService = {
       );
     }
 
-    const response = await api.get(
-      `/leave/balance/${employeeId}`
+    throw new Error(
+      "Leave balances are not configured in the current backend."
     );
+  },
+
+  async getLeavesByStatus(status, options = {}) {
+    return this.getLeaves({ ...options, status });
+  },
+
+  async updateLeave(leaveId, payload) {
+    if (!leaveId) {
+      throw new Error("Leave ID is required.");
+    }
+
+    const response = await api.put(`/leave/${leaveId}`, {
+      employeeId: payload.employeeId,
+      leaveType: payload.leaveType,
+      startDate: payload.startDate ?? payload.fromDate,
+      endDate: payload.endDate ?? payload.toDate,
+      reason: payload.reason
+    });
 
     return response.data;
+  },
+
+  getLeaveTypes() {
+    return Promise.resolve([
+      "CASUAL_LEAVE",
+      "SICK_LEAVE",
+      "EARNED_LEAVE",
+      "MATERNITY_LEAVE",
+      "PATERNITY_LEAVE",
+      "LOSS_OF_PAY",
+      "WORK_FROM_HOME"
+    ]);
   }
 
 };

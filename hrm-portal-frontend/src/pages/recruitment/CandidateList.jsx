@@ -136,8 +136,9 @@ const CandidateList = () => {
   };
 
   const handleResumeUpload = async (
-    candidates,
-    file  ) => {
+    candidateId,
+    file
+  ) => {
 
     if (!file) return;
 

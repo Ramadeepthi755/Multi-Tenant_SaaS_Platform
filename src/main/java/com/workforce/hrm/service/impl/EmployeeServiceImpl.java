@@ -1,559 +1,296 @@
 package com.workforce.hrm.service.impl;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.workforce.hrm.dto.request.EmployeeRequestDTO;
+import com.workforce.hrm.dto.response.EmployeeResponseDTO;
 import com.workforce.hrm.entity.Department;
 import com.workforce.hrm.entity.Designation;
 import com.workforce.hrm.entity.Employee;
 import com.workforce.hrm.enums.EmployeeStatus;
+import com.workforce.hrm.mapper.EmployeeMapper;
 import com.workforce.hrm.repository.DepartmentRepository;
 import com.workforce.hrm.repository.DesignationRepository;
-import com.workforce.hrm.repository.EmployeeDocumentRepository;
 import com.workforce.hrm.repository.EmployeeRepository;
-import com.workforce.hrm.repository.UserRepository;
 import com.workforce.hrm.security.SecurityUtils;
 import com.workforce.hrm.service.AuditLogService;
 import com.workforce.hrm.service.EmployeeService;
 
 @Service
+@Transactional
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-    private final EmployeeDocumentRepository employeeDocumentRepository;
-    private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
     private final AuditLogService auditLogService;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
-
-    public EmployeeServiceImpl(
-            EmployeeRepository employeeRepository,
-            EmployeeDocumentRepository employeeDocumentRepository,
-            UserRepository userRepository,
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository,
             DepartmentRepository departmentRepository,
             DesignationRepository designationRepository,
             AuditLogService auditLogService) {
-
         this.employeeRepository = employeeRepository;
-        this.employeeDocumentRepository = employeeDocumentRepository;
-        this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
         this.designationRepository = designationRepository;
         this.auditLogService = auditLogService;
     }
 
-    // =========================================================
-    // CREATE EMPLOYEE
-    // =========================================================
-
     @Override
-    public Employee createEmployee(EmployeeRequestDTO request) {
-
-        // -----------------------------------------------------
-        // CHECK EMPLOYEE CODE
-        // -----------------------------------------------------
-
-        if (employeeRepository.existsByEmployeeCode(
-                request.getEmployeeCode())) {
-
-            throw new RuntimeException(
-                    "Employee Code Already Exists");
+    public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
+        if (employeeRepository.existsByEmployeeCode(request.getEmployeeCode())) {
+            throw new IllegalArgumentException("Employee code already exists");
         }
-
-        // -----------------------------------------------------
-        // CHECK EMAIL
-        // -----------------------------------------------------
-
-        if (employeeRepository.existsByEmail(
-                request.getEmail())) {
-
-            throw new RuntimeException(
-                    "Email Already Exists");
+        if (employeeRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email already exists");
         }
-
-        Department department;
-        Designation designation;
-
-        // =====================================================
-        // SUPER ADMIN
-        // =====================================================
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            department =
-                    departmentRepository
-                            .findById(request.getDepartmentId())
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Department Not Found"));
-
-            designation =
-                    designationRepository
-                            .findById(request.getDesignationId())
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Designation Not Found"));
-        }
-
-        // =====================================================
-        // COMPANY USER
-        // =====================================================
-
-        else {
-
-            Long companyId =
-                    SecurityUtils.getCurrentCompanyId();
-
-            if (companyId == null) {
-
-                throw new RuntimeException(
-                        "Company not assigned to current user");
-            }
-
-            // -------------------------------------------------
-            // DEPARTMENT MUST BELONG TO CURRENT COMPANY
-            // -------------------------------------------------
-
-            department =
-                    departmentRepository
-                            .findByDepartmentIdAndCompanyId(
-                                    request.getDepartmentId(),
-                                    companyId)
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Department Not Found or Access Denied"));
-
-            // -------------------------------------------------
-            // DESIGNATION MUST BELONG TO CURRENT COMPANY
-            // -------------------------------------------------
-
-            designation =
-                    designationRepository
-                            .findByDesignationIdAndDepartmentCompanyId(
-                                    request.getDesignationId(),
-                                    companyId)
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Designation Not Found or Access Denied"));
-        }
-
-        // =====================================================
-        // VALIDATE DESIGNATION → DEPARTMENT
-        // =====================================================
-
-        if (designation.getDepartment() == null ||
-                !designation.getDepartment()
-                        .getDepartmentId()
-                        .equals(
-                                department.getDepartmentId())) {
-
-            throw new RuntimeException(
-                    "Designation does not belong to selected Department");
-        }
-
-        // =====================================================
-        // VALIDATE COMPANY
-        // =====================================================
-
-        if (department.getCompany() == null) {
-
-            throw new RuntimeException(
-                    "Selected Department is not assigned to a company");
-        }
-
-        // =====================================================
-        // CREATE EMPLOYEE
-        // =====================================================
-
+        Department department = resolveDepartment(request.getDepartmentId());
+        Designation designation = resolveDesignation(request.getDesignationId(), department);
         Employee employee = new Employee();
-
-        // -----------------------------------------------------
-        // BASIC DETAILS
-        // -----------------------------------------------------
-
-        employee.setEmployeeCode(
-                request.getEmployeeCode());
-
-        employee.setFirstName(
-                request.getFirstName());
-
-        employee.setLastName(
-                request.getLastName());
-
-        employee.setEmail(
-                request.getEmail());
-
-        employee.setPhone(
-                request.getPhone());
-
-        // -----------------------------------------------------
-        // PERSONAL DETAILS
-        // -----------------------------------------------------
-
-        employee.setGender(
-                request.getGender());
-
-        employee.setDateOfBirth(
-                request.getDateOfBirth());
-
-        // -----------------------------------------------------
-        // EMPLOYMENT DETAILS
-        // -----------------------------------------------------
-
-        employee.setJoiningDate(
-                request.getJoiningDate());
-
-        employee.setSalary(
-                request.getSalary());
-
-        /*
-         * If frontend does not send status during CREATE,
-         * employee will automatically become ACTIVE.
-         */
-        employee.setStatus(
-                request.getStatus() != null
-                        ? request.getStatus()
-                        : EmployeeStatus.ACTIVE);
-
-        // -----------------------------------------------------
-        // ORGANIZATION DETAILS
-        // -----------------------------------------------------
-
-        employee.setDepartment(
-                department);
-
-        employee.setDesignation(
-                designation);
-
-        // -----------------------------------------------------
-        // IMPORTANT FIX
-        // -----------------------------------------------------
-        // employees.company_id is NOT NULL.
-        // Company is derived from the selected department.
-
-        employee.setCompany(
-                department.getCompany());
-
-        // =====================================================
-        // SAVE
-        // =====================================================
-
-        Employee savedEmployee =
-                employeeRepository.save(employee);
-
-        // =====================================================
-        // AUDIT LOG
-        // =====================================================
-
-        auditLogService.saveLog(
-                "CREATE",
-                "EMPLOYEE",
-                "Created Employee : "
-                        + savedEmployee.getEmployeeCode()
-                        + " - "
-                        + savedEmployee.getFirstName(),
-                "SYSTEM");
-
-        return savedEmployee;
+        applyRequest(employee, request, department, designation);
+        Employee saved = employeeRepository.save(employee);
+        audit("CREATE", saved);
+        return EmployeeMapper.toResponseDTO(saved);
     }
 
-    // =========================================================
-    // GET ALL EMPLOYEES
-    // =========================================================
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponseDTO> getEmployees(String search, EmployeeStatus status,
+            Long companyId, Long departmentId, Long designationId, Pageable pageable) {
+        Long scopedCompanyId = resolveReadCompany(companyId);
+        Long scopedDepartmentId = resolveReadDepartment(departmentId);
+        return employeeRepository.findWorkspaceEmployees(scopedCompanyId, status,
+                scopedDepartmentId, designationId, normalizeSearch(search), pageable)
+                .map(EmployeeMapper::toResponseDTO);
+    }
 
     @Override
-    public List<Employee> getAllEmployees() {
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            return employeeRepository.findAll();
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponseDTO> getEmployeesForReport(String search, EmployeeStatus status,
+            Long departmentId, Long designationId, LocalDate fromDate, LocalDate toDate,
+            Pageable pageable) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("From date cannot be after to date");
         }
+        Long scopedCompanyId = resolveReadCompany(null);
+        Long scopedDepartmentId = resolveReadDepartment(departmentId);
+        return employeeRepository.findWorkspaceEmployeesForReport(scopedCompanyId, status,
+                scopedDepartmentId, designationId, fromDate, toDate, normalizeSearch(search), pageable)
+                .map(EmployeeMapper::toResponseDTO);
+    }
 
-        Long companyId =
-                SecurityUtils.getCurrentCompanyId();
+    @Override
+    @Transactional(readOnly = true)
+    public List<EmployeeResponseDTO> getAllEmployees() {
+        return getEmployees(null, null, null, null, null,
+                Pageable.unpaged()).getContent();
+    }
 
-        if (companyId == null) {
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getEmployeeById(Long id) {
+        return EmployeeMapper.toResponseDTO(getEmployeeEntity(id));
+    }
 
-            throw new RuntimeException(
-                    "Company not assigned to current user");
+    @Override
+    public EmployeeResponseDTO updateEmployee(Long id, EmployeeRequestDTO request) {
+        Employee existing = getEmployeeEntity(id);
+        employeeRepository.findByEmployeeCode(request.getEmployeeCode()).ifPresent(match -> {
+            if (!match.getEmployeeId().equals(existing.getEmployeeId())) {
+                throw new IllegalArgumentException("Employee code already exists");
+            }
+        });
+        employeeRepository.findByEmail(request.getEmail()).ifPresent(match -> {
+            if (!match.getEmployeeId().equals(existing.getEmployeeId())) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+        });
+        Department department = resolveDepartment(request.getDepartmentId());
+        Designation designation = resolveDesignation(request.getDesignationId(), department);
+        applyRequest(existing, request, department, designation);
+        Employee saved = employeeRepository.save(existing);
+        audit("UPDATE", saved);
+        return EmployeeMapper.toResponseDTO(saved);
+    }
+
+    @Override
+    public EmployeeResponseDTO updateEmployeeStatus(Long id, EmployeeStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("Employee status is required");
         }
-
-        return employeeRepository
-                .findByDepartmentCompanyId(companyId);
+        Employee employee = getEmployeeEntity(id);
+        employee.setStatus(status);
+        Employee saved = employeeRepository.save(employee);
+        audit("UPDATE_STATUS", saved);
+        return EmployeeMapper.toResponseDTO(saved);
     }
-
-    // =========================================================
-    // GET EMPLOYEE BY ID
-    // =========================================================
-
-    @Override
-    public Employee getEmployeeById(Long id) {
-
-        Employee employee =
-                employeeRepository
-                        .findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Employee Not Found"));
-
-        validateCompanyAccess(employee);
-
-        return employee;
-    }
-
-    // =========================================================
-    // UPDATE EMPLOYEE
-    // =========================================================
-
-    @Override
-    public Employee updateEmployee(
-            Long id,
-            Employee employee) {
-
-        Employee existingEmployee =
-                getEmployeeById(id);
-
-        existingEmployee.setEmployeeCode(
-                employee.getEmployeeCode());
-
-        existingEmployee.setFirstName(
-                employee.getFirstName());
-
-        existingEmployee.setLastName(
-                employee.getLastName());
-
-        existingEmployee.setEmail(
-                employee.getEmail());
-
-        existingEmployee.setPhone(
-                employee.getPhone());
-
-        existingEmployee.setGender(
-                employee.getGender());
-
-        existingEmployee.setDateOfBirth(
-                employee.getDateOfBirth());
-
-        existingEmployee.setJoiningDate(
-                employee.getJoiningDate());
-
-        existingEmployee.setSalary(
-                employee.getSalary());
-
-        existingEmployee.setStatus(
-                employee.getStatus());
-
-        existingEmployee.setResignationDate(
-                employee.getResignationDate());
-
-        /*
-         * Department / Designation are intentionally
-         * not changed here.
-         *
-         * This prevents a company user from changing
-         * an employee's tenant/company accidentally.
-         */
-
-        Employee updatedEmployee =
-                employeeRepository.save(existingEmployee);
-
-        auditLogService.saveLog(
-                "UPDATE",
-                "EMPLOYEE",
-                "Updated Employee : "
-                        + updatedEmployee.getEmployeeCode()
-                        + " - "
-                        + updatedEmployee.getFirstName(),
-                "SYSTEM");
-
-        return updatedEmployee;
-    }
-
-    // =========================================================
-    // DELETE EMPLOYEE
-    // =========================================================
 
     @Override
     public void deleteEmployee(Long id) {
-
-        Employee employee =
-                getEmployeeById(id);
-
-        employeeRepository.delete(employee);
-
-        auditLogService.saveLog(
-                "DELETE",
-                "EMPLOYEE",
-                "Deleted Employee : "
-                        + employee.getEmployeeCode()
-                        + " - "
-                        + employee.getFirstName(),
-                "SYSTEM");
+        Employee employee = getEmployeeEntity(id);
+        employee.setStatus(EmployeeStatus.INACTIVE);
+        employeeRepository.save(employee);
+        audit("DEACTIVATE", employee);
     }
 
-    // =========================================================
-    // GET EMPLOYEE BY CODE
-    // =========================================================
-
     @Override
-    public Employee getEmployeeByCode(String code) {
-
-        Employee employee =
-                employeeRepository
-                        .findByEmployeeCode(code)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Employee Not Found"));
-
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getEmployeeByCode(String code) {
+        Employee employee = employeeRepository.findByEmployeeCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
         validateCompanyAccess(employee);
-
-        return employee;
+        return EmployeeMapper.toResponseDTO(employee);
     }
 
-    // =========================================================
-    // GET EMPLOYEES BY DEPARTMENT
-    // =========================================================
-
     @Override
-    public List<Employee> getEmployeesByDepartment(
-            Long departmentId) {
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            return employeeRepository
-                    .findByDepartmentDepartmentId(
-                            departmentId);
-        }
-
-        Long companyId =
-                SecurityUtils.getCurrentCompanyId();
-
-        if (companyId == null) {
-
-            throw new RuntimeException(
-                    "Company not assigned to current user");
-        }
-
-        departmentRepository
-                .findByDepartmentIdAndCompanyId(
-                        departmentId,
-                        companyId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Department Not Found or Access Denied"));
-
-        return employeeRepository
-                .findByDepartmentDepartmentId(
-                        departmentId);
+    @Transactional(readOnly = true)
+    public List<EmployeeResponseDTO> getEmployeesByDepartment(Long departmentId) {
+        Department department = resolveDepartment(departmentId);
+        return employeeRepository.findByDepartmentDepartmentId(department.getDepartmentId()).stream()
+                .map(EmployeeMapper::toResponseDTO).toList();
     }
 
-    // =========================================================
-    // GET EMPLOYEES BY STATUS
-    // =========================================================
-
     @Override
-    public List<Employee> getEmployeesByStatus(
-            EmployeeStatus status) {
-
-        if (SecurityUtils.isSuperAdmin()) {
-
-            return employeeRepository
-                    .findByStatus(status);
-        }
-
-        Long companyId =
-                SecurityUtils.getCurrentCompanyId();
-
-        if (companyId == null) {
-
-            throw new RuntimeException(
-                    "Company not assigned to current user");
-        }
-
-        return employeeRepository
-                .findByDepartmentCompanyId(companyId)
-                .stream()
-                .filter(employee ->
-                        employee.getStatus() == status)
-                .toList();
+    @Transactional(readOnly = true)
+    public List<EmployeeResponseDTO> getEmployeesByStatus(EmployeeStatus status) {
+        return getEmployees(null, status, null, null, null, Pageable.unpaged()).getContent();
     }
 
-    // =========================================================
-    // SEARCH EMPLOYEES
-    // =========================================================
-
     @Override
-    public Page<Employee> searchEmployees(
-            String keyword,
-            Pageable pageable) {
-
-        return employeeRepository
-                .findByFirstNameContainingIgnoreCase(
-                        keyword,
-                        pageable);
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponseDTO> searchEmployees(String keyword, Pageable pageable) {
+        return getEmployees(keyword, null, null, null, null, pageable);
     }
 
-    // =========================================================
-    // EMPLOYEE PROFILE
-    // =========================================================
-
     @Override
-    public Employee getEmployeeProfile(Long id) {
-
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getEmployeeProfile(Long id) {
         return getEmployeeById(id);
     }
 
-    // =========================================================
-    // TENANT SECURITY
-    // =========================================================
+    private Employee getEmployeeEntity(Long id) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+        validateCompanyAccess(employee);
+        return employee;
+    }
 
-    private void validateCompanyAccess(
-            Employee employee) {
+    private Department resolveDepartment(Long departmentId) {
+        if (departmentId == null) {
+            throw new IllegalArgumentException("Department is required");
+        }
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Department not found"));
+        if (!SecurityUtils.isSuperAdmin()) {
+            Long companyId = requiredCompanyId();
+            if (department.getCompany() == null || !companyId.equals(department.getCompany().getId())) {
+                throw new AccessDeniedException("Department belongs to another company");
+            }
+            if (isManagerRole() && !requiredManagerDepartmentId().equals(department.getDepartmentId())) {
+                throw new AccessDeniedException("Managers can only access their own department");
+            }
+        }
+        return department;
+    }
 
+    private Designation resolveDesignation(Long designationId, Department department) {
+        if (designationId == null) {
+            throw new IllegalArgumentException("Designation is required");
+        }
+        Designation designation = designationRepository.findById(designationId)
+                .orElseThrow(() -> new IllegalArgumentException("Designation not found"));
+        if (designation.getDepartment() == null || !department.getDepartmentId()
+                .equals(designation.getDepartment().getDepartmentId())) {
+            throw new IllegalArgumentException("Designation does not belong to the selected department");
+        }
+        return designation;
+    }
+
+    private void applyRequest(Employee employee, EmployeeRequestDTO request,
+            Department department, Designation designation) {
+        employee.setEmployeeCode(request.getEmployeeCode().trim());
+        employee.setFirstName(request.getFirstName().trim());
+        employee.setLastName(blankToNull(request.getLastName()));
+        employee.setEmail(request.getEmail().trim().toLowerCase());
+        employee.setPhone(blankToNull(request.getPhone()));
+        employee.setGender(blankToNull(request.getGender()));
+        employee.setDateOfBirth(request.getDateOfBirth());
+        employee.setJoiningDate(request.getJoiningDate());
+        employee.setSalary(request.getSalary());
+        employee.setStatus(request.getStatus() == null ? EmployeeStatus.ACTIVE : request.getStatus());
+        employee.setDepartment(department);
+        employee.setDesignation(designation);
+        employee.setCompany(department.getCompany());
+    }
+
+    private Long resolveReadCompany(Long requestedCompanyId) {
+        return SecurityUtils.isSuperAdmin() ? requestedCompanyId : requiredCompanyId();
+    }
+
+    private void validateCompanyAccess(Employee employee) {
         if (SecurityUtils.isSuperAdmin()) {
             return;
         }
-
-        Long currentCompanyId =
-                SecurityUtils.getCurrentCompanyId();
-
-        if (!belongsToCompany(
-                employee,
-                currentCompanyId)) {
-
-            throw new RuntimeException(
-                    "Access Denied: Employee belongs to another company");
+        Long companyId = requiredCompanyId();
+        if (employee.getCompany() == null || !companyId.equals(employee.getCompany().getId())) {
+            throw new AccessDeniedException("Employee belongs to another company");
+        }
+        if (isManagerRole() && (employee.getDepartment() == null
+                || !requiredManagerDepartmentId().equals(employee.getDepartment().getDepartmentId()))) {
+            throw new AccessDeniedException("Managers can only access employees in their own department");
         }
     }
 
-    // =========================================================
-    // CHECK EMPLOYEE COMPANY
-    // =========================================================
-
-    private boolean belongsToCompany(
-            Employee employee,
-            Long companyId) {
-
-        if (employee == null ||
-                companyId == null ||
-                employee.getDepartment() == null ||
-                employee.getDepartment().getCompany() == null) {
-
-            return false;
+    private Long requiredCompanyId() {
+        Long companyId = SecurityUtils.getCurrentCompanyId();
+        if (companyId == null) {
+            throw new AccessDeniedException("No company assigned to the current user");
         }
+        return companyId;
+    }
 
-        return companyId.equals(
-                employee.getDepartment()
-                        .getCompany()
-                        .getId()
-        );
+    private Long resolveReadDepartment(Long requestedDepartmentId) {
+        if (!isManagerRole()) {
+            return requestedDepartmentId;
+        }
+        Long managerDepartmentId = requiredManagerDepartmentId();
+        if (requestedDepartmentId != null && !managerDepartmentId.equals(requestedDepartmentId)) {
+            throw new AccessDeniedException("Managers can only access their own department");
+        }
+        return managerDepartmentId;
+    }
+
+    private Long requiredManagerDepartmentId() {
+        String email = SecurityUtils.getCurrentUserEmail();
+        Employee manager = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new AccessDeniedException("No employee profile is linked to the manager"));
+        if (manager.getCompany() == null || !requiredCompanyId().equals(manager.getCompany().getId())
+                || manager.getDepartment() == null) {
+            throw new AccessDeniedException("The manager has no authorised team scope");
+        }
+        return manager.getDepartment().getDepartmentId();
+    }
+
+    private boolean isManagerRole() {
+        return "MANAGER".equalsIgnoreCase(SecurityUtils.getCurrentRole());
+    }
+
+    private String normalizeSearch(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void audit(String action, Employee employee) {
+        auditLogService.saveLog(action, "EMPLOYEE",
+                action + " employee: " + employee.getEmployeeCode(), "SYSTEM");
     }
 }

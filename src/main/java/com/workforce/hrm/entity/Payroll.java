@@ -19,10 +19,10 @@ public class Payroll {
 	@JoinColumn(name = "employee_id", nullable = false)
 	private Employee employee;
 
-	@Column(nullable = false)
+	@Column(name = "payroll_month", nullable = false)
 	private String month;
 
-	@Column(nullable = false)
+	@Column(name = "payroll_year", nullable = false)
 	private Integer year;
 
 	@Column(nullable = false, precision = 10, scale = 2)

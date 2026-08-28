@@ -120,7 +120,13 @@ const profileService = {
     const response =
       await api.post(
         "/users/me/profile-photo",
-        formData
+        formData,
+        {
+          headers: {
+            "Content-Type":
+              "multipart/form-data"
+          }
+        }
       );
 
     return response.data;

@@ -14,7 +14,8 @@ const PermissionRoute = ({
   permission,
   permissions = [],
   mode = "all",
-  role
+  role,
+  roles = []
 }) => {
 
   const {
@@ -74,6 +75,25 @@ const PermissionRoute = ({
       );
 
     }
+
+  }
+
+  if (
+    roles.length > 0 &&
+    !roles.some(
+      allowedRole =>
+        hasRole(
+          allowedRole
+        )
+    )
+  ) {
+
+    return (
+      <Navigate
+        to="/unauthorized"
+        replace
+      />
+    );
 
   }
 

@@ -375,6 +375,33 @@ export const normalizeDepartmentReport = (
 };
 
 
+export const normalizeRecruitmentReport = (
+  item = {}
+) => ({
+  id: item.candidateId ?? item.id ?? null,
+  candidateName: item.candidateName ?? item.fullName ?? "-",
+  email: item.email ?? "-",
+  experience: item.experience ?? "-",
+  currentCompany: item.currentCompany ?? "-",
+  appliedAt: item.appliedAt ?? item.createdAt ?? null,
+  status: String(item.status ?? "APPLIED").toUpperCase()
+});
+
+
+export const normalizePerformanceReport = (
+  item = {}
+) => ({
+  id: item.performanceReviewId ?? item.id ?? null,
+  employeeCode: item.employeeCode ?? "-",
+  employeeName: item.employeeName ?? "-",
+  department: item.departmentName ?? item.department ?? "-",
+  cycleName: item.cycleName ?? "-",
+  reviewDate: item.reviewDate ?? null,
+  rating: item.rating ?? "-",
+  status: String(item.status ?? "DRAFT").toUpperCase()
+});
+
+
 export const formatReportDate = (
   value
 ) => {

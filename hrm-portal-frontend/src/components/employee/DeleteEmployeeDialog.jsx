@@ -41,7 +41,7 @@ const DeleteEmployeeDialog = ({
           fontWeight: 900
         }}
       >
-        Delete Employee?
+        Deactivate Employee?
       </DialogTitle>
 
 
@@ -65,8 +65,7 @@ const DeleteEmployeeDialog = ({
         <Typography
           color="text.secondary"
         >
-          Are you sure you want to permanently
-          delete{" "}
+          Are you sure you want to deactivate{" "}
           <strong>
             {
               getEmployeeName(
@@ -86,7 +85,7 @@ const DeleteEmployeeDialog = ({
             mt: 1.5
           }}
         >
-          This action cannot be undone.
+          The employee will remain in the system and can be reactivated later.
         </Typography>
 
       </DialogContent>
@@ -133,7 +132,7 @@ const DeleteEmployeeDialog = ({
             />
 
           ) : (
-            "Delete"
+            "Deactivate"
           )}
 
         </Button>

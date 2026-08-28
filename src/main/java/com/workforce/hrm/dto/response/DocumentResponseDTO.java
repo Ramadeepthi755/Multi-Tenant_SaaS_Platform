@@ -13,6 +13,9 @@ public class DocumentResponseDTO {
 	private Long fileSize;
 	private DocumentType documentType;
 	private LocalDateTime uploadDate;
+	private Long employeeId;
+	private String employeeName;
+	private Long companyId;
 
 	public DocumentResponseDTO() {
 	}
@@ -72,4 +75,11 @@ public class DocumentResponseDTO {
 	public void setUploadDate(LocalDateTime uploadDate) {
 		this.uploadDate = uploadDate;
 	}
+
+	public Long getEmployeeId() { return employeeId; }
+	public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+	public String getEmployeeName() { return employeeName; }
+	public void setEmployeeName(String employeeName) { this.employeeName = employeeName; }
+	public Long getCompanyId() { return companyId; }
+	public void setCompanyId(Long companyId) { this.companyId = companyId; }
 }

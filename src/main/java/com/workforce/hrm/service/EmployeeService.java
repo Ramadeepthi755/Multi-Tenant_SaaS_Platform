@@ -1,12 +1,13 @@
 package com.workforce.hrm.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.workforce.hrm.dto.request.EmployeeRequestDTO;
-import com.workforce.hrm.entity.Employee;
+import com.workforce.hrm.dto.response.EmployeeResponseDTO;
 import com.workforce.hrm.enums.EmployeeStatus;
 
 public interface EmployeeService {
@@ -15,7 +16,7 @@ public interface EmployeeService {
     // CREATE EMPLOYEE
     // =========================================================
 
-    Employee createEmployee(
+    EmployeeResponseDTO createEmployee(
             EmployeeRequestDTO request);
 
 
@@ -23,14 +24,31 @@ public interface EmployeeService {
     // GET ALL EMPLOYEES
     // =========================================================
 
-    List<Employee> getAllEmployees();
+    List<EmployeeResponseDTO> getAllEmployees();
+
+    Page<EmployeeResponseDTO> getEmployees(
+            String search,
+            EmployeeStatus status,
+            Long companyId,
+            Long departmentId,
+            Long designationId,
+            Pageable pageable);
+
+    Page<EmployeeResponseDTO> getEmployeesForReport(
+            String search,
+            EmployeeStatus status,
+            Long departmentId,
+            Long designationId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Pageable pageable);
 
 
     // =========================================================
     // GET EMPLOYEE BY ID
     // =========================================================
 
-    Employee getEmployeeById(
+    EmployeeResponseDTO getEmployeeById(
             Long id);
 
 
@@ -38,9 +56,13 @@ public interface EmployeeService {
     // UPDATE EMPLOYEE
     // =========================================================
 
-    Employee updateEmployee(
+    EmployeeResponseDTO updateEmployee(
             Long id,
-            Employee employee);
+            EmployeeRequestDTO request);
+
+    EmployeeResponseDTO updateEmployeeStatus(
+            Long id,
+            EmployeeStatus status);
 
 
     // =========================================================
@@ -55,7 +77,7 @@ public interface EmployeeService {
     // GET EMPLOYEE BY CODE
     // =========================================================
 
-    Employee getEmployeeByCode(
+    EmployeeResponseDTO getEmployeeByCode(
             String code);
 
 
@@ -63,7 +85,7 @@ public interface EmployeeService {
     // GET EMPLOYEES BY DEPARTMENT
     // =========================================================
 
-    List<Employee> getEmployeesByDepartment(
+    List<EmployeeResponseDTO> getEmployeesByDepartment(
             Long departmentId);
 
 
@@ -71,7 +93,7 @@ public interface EmployeeService {
     // GET EMPLOYEES BY STATUS
     // =========================================================
 
-    List<Employee> getEmployeesByStatus(
+    List<EmployeeResponseDTO> getEmployeesByStatus(
             EmployeeStatus status);
 
 
@@ -79,7 +101,7 @@ public interface EmployeeService {
     // SEARCH EMPLOYEES
     // =========================================================
 
-    Page<Employee> searchEmployees(
+    Page<EmployeeResponseDTO> searchEmployees(
             String keyword,
             Pageable pageable);
 
@@ -88,6 +110,6 @@ public interface EmployeeService {
     // EMPLOYEE PROFILE
     // =========================================================
 
-    Employee getEmployeeProfile(
+    EmployeeResponseDTO getEmployeeProfile(
             Long id);
 }

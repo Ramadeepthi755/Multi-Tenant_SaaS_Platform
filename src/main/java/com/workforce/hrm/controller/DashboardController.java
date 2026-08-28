@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.workforce.hrm.dto.response.DashboardResponseDTO;
+import com.workforce.hrm.dto.response.RoleDashboardResponseDTO;
 import com.workforce.hrm.service.DashboardService;
 
 @RestController
@@ -21,9 +21,9 @@ public class DashboardController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('DASHBOARD_VIEW')")
-    public ResponseEntity<DashboardResponseDTO> getDashboard() {
+    public ResponseEntity<RoleDashboardResponseDTO> getDashboard() {
 
-        DashboardResponseDTO response =
+        RoleDashboardResponseDTO response =
                 dashboardService.getDashboard();
 
         return ResponseEntity.ok(response);
