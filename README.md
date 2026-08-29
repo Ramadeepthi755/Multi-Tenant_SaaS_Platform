@@ -1,371 +1,129 @@
-# HRM Portal Backend
+# HRM Enterprise — Multi-Tenant SaaS Platform
 
-A complete Enterprise Human Resource Management (HRM) Portal Backend built using Spring Boot. This project provides secure REST APIs for managing employees, departments, attendance, payroll, leave requests, holidays, notifications, documents, and more.
+A production-oriented **Human Resource Management (HRM) SaaS platform** designed to manage employees, attendance, leave, payroll, recruitment, performance, documents, reporting, permissions, subscriptions, and AI-assisted HR workflows from a centralized multi-tenant system.
 
----
-
-## Features
-
-### Authentication & Security
-- JWT Authentication
-- Spring Security
-- Role-Based Access Control (RBAC)
-- Password Encryption (BCrypt)
-- Protected REST APIs
-
-### Company Management
-- Create Company
-- Update Company
-- Delete Company
-- View Company Details
-
-### Department Management
-- Department CRUD Operations
-- Department Status Management
-
-### Designation Management
-- Designation CRUD Operations
-- Department-wise Designations
-
-### Employee Management
-- Employee Registration
-- Employee Profile
-- Employee Status
-- Employee Search
-- Employee Dashboard
-
-### Attendance Management
-- Employee Check-In
-- Employee Check-Out
-- Attendance History
-- Monthly Attendance
-
-### Leave Management
-- Apply Leave
-- Approve Leave
-- Reject Leave
-- Leave History
-
-### Payroll Management
-- Salary Details
-- Payroll Generation
-- Payroll History
-
-### Holiday Management
-- Company Holiday Calendar
-- Upcoming Holidays
-
-### Document Management
-- Upload Employee Documents
-- Download Documents
-- Delete Documents
-
-### Notifications
-- In-App Notifications
-- Notification Status
-
-### Dashboard
-- Employee Statistics
-- Department Statistics
-- Attendance Summary
-- Payroll Summary
-- Upcoming Holidays
-
-### Audit Logs
-- User Activity Tracking
-- System Audit Logs
+The platform implements role-based access control, tenant-level data isolation, JWT authentication, modular REST APIs, responsive React interfaces, and a pluggable AI provider architecture.
 
 ---
 
-## Tech Stack
+## 🚀 Overview
 
-### Backend
-- Java 21
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- Hibernate
+HRM Enterprise is a full-stack SaaS application built to model how a modern enterprise HR platform can be designed and engineered.
 
-### Database
-- MySQL
+The application supports multiple organizations (tenants), each with its own employees, departments, designations, attendance, leave, payroll, recruitment, documents, and reports.
 
-### Build Tool
-- Maven
+Different users receive different capabilities based on their assigned roles and permissions.
 
-### API Testing
-- Postman
-- Swagger UI
+### Core Roles
 
-### Authentication
-- JWT Token
+- **Super Admin** — Platform-wide administration
+- **Company Admin** — Organization administration
+- **HR** — HR and recruitment operations
+- **Manager** — Team management and approvals
+- **Employee** — Employee self-service
 
 ---
 
-## Project Architecture
-
-```
-Controller
-      │
-      ▼
-Service Interface
-      │
-      ▼
-Service Implementation
-      │
-      ▼
-Repository
-      │
-      ▼
-MySQL Database
-```
-
----
-
-## Project Structure
-
-```
-src
- ├── controller
- ├── dto
- ├── entity
- ├── enums
- ├── exception
- ├── repository
- ├── security
- ├── service
- │     ├── interface
- │     └── implementation
- ├── config
- └── util
-```
-
----
-
-## Technologies Used
-
-- Java 21
-- Spring Boot
-- Spring Security
-- JWT
-- Hibernate
-- Spring Data JPA
-- MySQL
-- Maven
-- Swagger
-- Lombok
-
----
-
-## REST APIs
-
-### Authentication
-
-```
-POST   /api/auth/login
-POST   /api/auth/register
-```
-
-### Company
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Department
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Designation
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Employee
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Attendance
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Leave
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Payroll
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Holiday
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Notification
-
-```
-GET
-POST
-PUT
-DELETE
-```
-
-### Documents
-
-```
-Upload
-Download
-Delete
-```
-
----
-
-## Validation
-
-- Bean Validation
-- Request DTO Validation
-- Global Exception Handling
-- Custom Error Responses
-
----
-
-## Security
-
-- JWT Authentication
-- Spring Security
-- BCrypt Password Encryption
-- Role-Based Authorization
-- Secure REST APIs
-
----
-
-## Database
-
-MySQL Database
-
-Tables include:
-
-- users
-- companies
-- departments
-- designations
-- employees
-- attendance
-- leave_requests
-- payroll
-- holidays
-- notifications
-- employee_documents
-- audit_logs
-
----
-
-## Running the Project
-
-### Clone Repository
-
-```bash
-git clone https://github.com/Ramadeepthi755/HRM-Portal-Backend.git
-```
-
-### Navigate to Project
-
-```bash
-cd HRM-Portal-Backend
-```
-
-### Configure Database
-
-Update your `application.properties`:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/hrm_portal
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-```
-
-### Run Application
-
-```bash
-mvn spring-boot:run
-```
-
-Application runs at:
-
-```
-http://localhost:8087
-```
-
----
-
-## API Documentation
-
-Swagger UI
-
-```
-http://localhost:8087/swagger-ui/index.html
-```
-
----
-
-## Future Enhancements
-
-- React Frontend
-- Email Notifications
-- SMS Notifications
-- AWS S3 File Storage
-- Dashboard Charts
-- PDF Reports
-- Multi-Tenant HRM
-- Docker Deployment
-- CI/CD Pipeline
-
----
-
-## Author
-
-**Ramadeepthi Badireddy**
-
-GitHub: https://github.com/Ramadeepthi755
-
----
-
-## License
-
-This project is developed for educational and portfolio purposes.
+## ✨ Key Features
+
+### 🔐 Authentication & Authorization
+
+- JWT-based authentication
+- Secure login and session restoration
+- Role-based access control (RBAC)
+- Protected frontend routes
+- Server-side authorization using Spring Security
+- Permission-based access control
+- Unauthorized access handling
+- Secure tenant identification from authenticated user context
+
+### 🏢 Multi-Tenant Architecture
+
+- Multiple organizations supported
+- Tenant-aware data access
+- Company-level data isolation
+- Server-side tenant scoping
+- Tenant context derived from authenticated security claims
+- Prevents users from accessing another organization's data
+
+### 👥 Employee Management
+
+- Employee directory
+- Employee profiles
+- Employee search and pagination
+- Department and designation assignment
+- Employee lifecycle management
+- Employee timeline
+- Lifecycle events such as:
+  - ONBOARDING
+  - PROMOTION
+  - TRANSFER
+  - EXIT
+- Profile photo management
+
+### ⏱️ Attendance Management
+
+- Employee clock-in
+- Employee clock-out
+- Working duration calculation
+- Duplicate check-in prevention
+- Attendance history
+- Team attendance views
+- Attendance filtering
+- Attendance analytics
+
+### 🏖️ Leave Management
+
+- Leave applications
+- Leave balances
+- Leave history
+- Manager approvals
+- HR approvals
+- Leave rejection
+- Leave status tracking
+- Leave balance computation
+
+### 💰 Payroll
+
+- Salary structure
+- Gross salary calculation
+- Allowances
+- Deductions
+- Net salary
+- Payslip generation
+- Employee-specific payslip access
+
+### 📄 Document Vault
+
+- Document upload
+- Document listing
+- Document download
+- Document deletion
+- File size validation
+- MIME type validation
+- Tenant-aware document access
+
+### 🎯 Recruitment / ATS
+
+- Job openings
+- Candidate management
+- Recruitment pipeline
+- Kanban-style workflow
+- Candidate stage movement
+- Interview management
+- Offer management
+
+Recruitment pipeline:
+
+```text
+APPLIED
+   ↓
+SCREENING
+   ↓
+SHORTLISTED
+   ↓
+INTERVIEW
+   ↓
+OFFER
+   ↓
+HIRED
