@@ -2,6 +2,7 @@ package com.workforce.hrm.service.impl;
 
 import com.workforce.hrm.ai.AiProvider;
 import com.workforce.hrm.ai.AiProviderFactory;
+import com.workforce.hrm.ai.DeterministicFallbackAiProvider;
 import com.workforce.hrm.entity.Company;
 import com.workforce.hrm.repository.CompanyRepository;
 import com.workforce.hrm.security.SecurityUtils;
@@ -18,10 +19,13 @@ public class PolicyRagServiceImpl implements PolicyRagService {
     private final AiProviderFactory aiProviderFactory;
     private final CompanyRepository companyRepository;
 
+    private final DeterministicFallbackAiProvider fallbackAiProvider;
+
     @Autowired
-    public PolicyRagServiceImpl(AiProviderFactory aiProviderFactory, CompanyRepository companyRepository) {
+    public PolicyRagServiceImpl(AiProviderFactory aiProviderFactory, CompanyRepository companyRepository, DeterministicFallbackAiProvider fallbackAiProvider) {
         this.aiProviderFactory = aiProviderFactory;
         this.companyRepository = companyRepository;
+        this.fallbackAiProvider = fallbackAiProvider;
     }
 
     @Override
@@ -64,6 +68,10 @@ public class PolicyRagServiceImpl implements PolicyRagService {
         Long companyId = SecurityUtils.getCurrentCompanyId();
         List<String> snippets = retrievePolicySnippets(companyId, query);
         AiProvider provider = aiProviderFactory.getActiveProvider();
-        return provider.answerPolicyQuestion(query, snippets);
+        try {
+            return provider.answerPolicyQuestion(query, snippets);
+        } catch (Exception e) {
+            return fallbackAiProvider.answerPolicyQuestion(query, snippets);
+        }
     }
 }

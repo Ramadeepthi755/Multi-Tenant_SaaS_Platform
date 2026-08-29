@@ -7,10 +7,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.workforce.hrm.ai.DeterministicFallbackAiProvider;
 import com.workforce.hrm.dto.request.AiPromptRequestDTO;
 import com.workforce.hrm.dto.response.AiResponseDTO;
 import com.workforce.hrm.entity.Candidate;
@@ -31,6 +34,8 @@ import com.workforce.hrm.service.AiAssistantService;
 @Transactional(readOnly = true)
 public class AiAssistantServiceImpl implements AiAssistantService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiAssistantServiceImpl.class);
+
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final CandidateRepository candidateRepository;
@@ -38,6 +43,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     private final LeaveRepository leaveRepository;
     private final PerformanceReviewRepository performanceReviewRepository;
     private final com.workforce.hrm.ai.AiProviderFactory aiProviderFactory;
+    private final DeterministicFallbackAiProvider fallbackAiProvider;
 
     public AiAssistantServiceImpl(
             EmployeeRepository employeeRepository,
@@ -46,7 +52,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
             AttendanceRepository attendanceRepository,
             LeaveRepository leaveRepository,
             PerformanceReviewRepository performanceReviewRepository,
-            com.workforce.hrm.ai.AiProviderFactory aiProviderFactory) {
+            com.workforce.hrm.ai.AiProviderFactory aiProviderFactory,
+            DeterministicFallbackAiProvider fallbackAiProvider) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.candidateRepository = candidateRepository;
@@ -54,6 +61,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         this.leaveRepository = leaveRepository;
         this.performanceReviewRepository = performanceReviewRepository;
         this.aiProviderFactory = aiProviderFactory;
+        this.fallbackAiProvider = fallbackAiProvider;
     }
 
     @Override
@@ -77,12 +85,21 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
         com.workforce.hrm.ai.AiProvider provider = aiProviderFactory.getActiveProvider();
         String systemPrompt = String.format("You are an intelligent HRM Enterprise Copilot for an organization. User role: %s.", role != null ? role : "EMPLOYEE");
-        String aiGeneratedAnswer = provider.generateText(systemPrompt, prompt);
+        String aiGeneratedAnswer;
+        String providerName;
+        try {
+            aiGeneratedAnswer = provider.generateText(systemPrompt, prompt);
+            providerName = provider.getProviderName();
+        } catch (Exception e) {
+            log.warn("AI generation failed with active provider ({}): {}. Falling back to analytical engine.", provider.getProviderName(), e.getMessage());
+            aiGeneratedAnswer = fallbackAiProvider.generateText(systemPrompt, prompt);
+            providerName = fallbackAiProvider.getProviderName();
+        }
 
         suggestions.add("How many employees are in the company?");
         suggestions.add("Draft a Job Description for Senior React Developer");
         suggestions.add("Check today's attendance anomalies");
-        meta.put("provider", provider.getProviderName());
+        meta.put("provider", providerName);
 
         return new AiResponseDTO(aiGeneratedAnswer, "COPILOT", suggestions, meta);
     }
@@ -95,10 +112,19 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         String exp = (experience != null && !experience.isBlank()) ? experience : "3-5 years";
 
         com.workforce.hrm.ai.AiProvider provider = aiProviderFactory.getActiveProvider();
-        String jd = provider.generateJobDescription(title, dept, skills, exp);
+        String jd;
+        String providerName;
+        try {
+            jd = provider.generateJobDescription(title, dept, skills, exp);
+            providerName = provider.getProviderName();
+        } catch (Exception e) {
+            log.warn("AI Job Description generation failed with active provider ({}): {}. Falling back to analytical engine.", provider.getProviderName(), e.getMessage());
+            jd = fallbackAiProvider.generateJobDescription(title, dept, skills, exp);
+            providerName = fallbackAiProvider.getProviderName();
+        }
 
         List<String> suggestions = List.of("Adjust compensation band", "Add required certifications", "Post to recruitment board");
-        Map<String, Object> meta = Map.of("roleTitle", title, "department", dept, "provider", provider.getProviderName());
+        Map<String, Object> meta = Map.of("roleTitle", title, "department", dept, "provider", providerName);
         return new AiResponseDTO(jd, "RECRUITMENT", suggestions, meta);
     }
 
@@ -122,9 +148,18 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         String exp = candidate.getExperience() != null ? candidate.getExperience() : "Not specified";
 
         com.workforce.hrm.ai.AiProvider provider = aiProviderFactory.getActiveProvider();
-        String analysis = provider.screenCandidate(candidate.getFullName(), skills, exp, "Candidate Application", "Standard Role Requirements");
+        String analysis;
+        String providerName;
+        try {
+            analysis = provider.screenCandidate(candidate.getFullName(), skills, exp, "Candidate Application", "Standard Role Requirements");
+            providerName = provider.getProviderName();
+        } catch (Exception e) {
+            log.warn("AI candidate screening failed with active provider ({}): {}. Falling back to analytical engine.", provider.getProviderName(), e.getMessage());
+            analysis = fallbackAiProvider.screenCandidate(candidate.getFullName(), skills, exp, "Candidate Application", "Standard Role Requirements");
+            providerName = fallbackAiProvider.getProviderName();
+        }
 
-        return new AiResponseDTO(analysis, "RECRUITMENT_SCREENING", List.of("Schedule Interview", "Shortlist Candidate", "Send Offer"), Map.of("candidateId", candidateId, "provider", provider.getProviderName()));
+        return new AiResponseDTO(analysis, "RECRUITMENT_SCREENING", List.of("Schedule Interview", "Shortlist Candidate", "Send Offer"), Map.of("candidateId", candidateId, "provider", providerName));
     }
 
     @Override
@@ -155,15 +190,30 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 .toList();
 
         com.workforce.hrm.ai.AiProvider provider = aiProviderFactory.getActiveProvider();
-        String summary = provider.summarizePerformance(
-            employee.getFirstName() + (employee.getLastName() != null ? " " + employee.getLastName() : ""),
-            employee.getDesignation() != null ? employee.getDesignation().getDesignationName() : "Associate",
-            employee.getDepartment() != null ? employee.getDepartment().getDepartmentName() : "Operations",
-            avgRating,
-            notes
-        );
+        String summary;
+        String providerName;
+        try {
+            summary = provider.summarizePerformance(
+                employee.getFirstName() + (employee.getLastName() != null ? " " + employee.getLastName() : ""),
+                employee.getDesignation() != null ? employee.getDesignation().getDesignationName() : "Associate",
+                employee.getDepartment() != null ? employee.getDepartment().getDepartmentName() : "Operations",
+                avgRating,
+                notes
+            );
+            providerName = provider.getProviderName();
+        } catch (Exception e) {
+            log.warn("AI performance summary failed with active provider ({}): {}. Falling back to analytical engine.", provider.getProviderName(), e.getMessage());
+            summary = fallbackAiProvider.summarizePerformance(
+                employee.getFirstName() + (employee.getLastName() != null ? " " + employee.getLastName() : ""),
+                employee.getDesignation() != null ? employee.getDesignation().getDesignationName() : "Associate",
+                employee.getDepartment() != null ? employee.getDepartment().getDepartmentName() : "Operations",
+                avgRating,
+                notes
+            );
+            providerName = fallbackAiProvider.getProviderName();
+        }
 
-        return new AiResponseDTO(summary, "PERFORMANCE", List.of("Download Review PDF", "Schedule Feedback Session"), Map.of("employeeId", employeeId, "avgRating", avgRating, "provider", provider.getProviderName()));
+        return new AiResponseDTO(summary, "PERFORMANCE", List.of("Download Review PDF", "Schedule Feedback Session"), Map.of("employeeId", employeeId, "avgRating", avgRating, "provider", providerName));
     }
 
     @Override
