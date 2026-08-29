@@ -28,7 +28,7 @@ import com.workforce.hrm.service.LeaveService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/leave")
+@RequestMapping({"/api/leave", "/api/leaves"})
 public class LeaveController {
 
     private final LeaveService leaveService;

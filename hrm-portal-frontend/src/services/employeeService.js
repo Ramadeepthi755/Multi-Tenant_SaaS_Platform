@@ -250,6 +250,18 @@ const employeeService = {
       employeeId,
       "INACTIVE"
     );
+  },
+
+  // ==========================================================
+  // GET EMPLOYEE LIFECYCLE TIMELINE
+  // ==========================================================
+
+  async getEmployeeTimeline(employeeId) {
+    if (!employeeId) {
+      throw new Error("Employee ID is required.");
+    }
+    const response = await api.get(`/employees/${employeeId}/timeline`);
+    return response.data;
   }
 
 };

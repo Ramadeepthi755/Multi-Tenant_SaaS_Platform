@@ -137,6 +137,29 @@ public class RecruitmentController {
         return recruitmentService.updateCandidate(id, request);
     }
 
+    @PutMapping("/candidates/{id}/status")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN','HR')")
+    public CandidateResponse updateCandidateStatus(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        String statusStr = payload.get("status");
+        CandidateResponse existing = recruitmentService.getCandidate(id);
+        com.workforce.hrm.enums.CandidateStatus targetStatus = statusStr != null
+                ? com.workforce.hrm.enums.CandidateStatus.valueOf(statusStr.toUpperCase())
+                : existing.status();
+
+        CandidateRequest req = new CandidateRequest(
+                existing.fullName(),
+                existing.email(),
+                existing.phone(),
+                existing.experience(),
+                existing.skills(),
+                existing.currentCompany(),
+                existing.expectedSalary(),
+                existing.noticePeriod(),
+                targetStatus
+        );
+        return recruitmentService.updateCandidate(id, req);
+    }
+
     @PostMapping(value = "/candidates/{id}/resume", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('COMPANY_ADMIN','HR')")
     public CandidateResponse uploadResume(@PathVariable Long id, @RequestPart("file") MultipartFile file) {

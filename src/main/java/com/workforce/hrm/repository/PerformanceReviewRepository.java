@@ -38,4 +38,6 @@ public interface PerformanceReviewRepository extends JpaRepository<PerformanceRe
             @Param("toDate") LocalDate toDate,
             @Param("search") String search,
             Pageable pageable);
+
+    java.util.List<PerformanceReview> findByEmployeeEmployeeId(Long employeeId);
 }

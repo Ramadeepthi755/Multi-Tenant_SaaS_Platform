@@ -78,10 +78,10 @@ public class DemoAccountsSeeder implements CommandLineRunner {
                 .orElseGet(() -> createDemoDepartment(company));
 
         List<DemoAccount> accounts = List.of(
-                new DemoAccount("COMPANY_ADMIN", "Company Admin", "company-admin@demo.hrm.test", false),
-                new DemoAccount("HR", "HR User", "hr@demo.hrm.test", false),
-                new DemoAccount("MANAGER", "Manager User", "manager@demo.hrm.test", true),
-                new DemoAccount("EMPLOYEE", "Employee User", "employee@demo.hrm.test", true));
+                new DemoAccount("COMPANY_ADMIN", "Company Admin", "company-admin@gmail.com", "company-admin@demo.hrm.test", false),
+                new DemoAccount("HR", "HR User", "hr@gmail.com", "hr@demo.hrm.test", false),
+                new DemoAccount("MANAGER", "Manager User", "manager@gmail.com", "manager@demo.hrm.test", true),
+                new DemoAccount("EMPLOYEE", "Employee User", "employee@gmail.com", "employee@demo.hrm.test", true));
 
         for (DemoAccount account : accounts) {
             createUserIfMissing(account, company);
@@ -97,7 +97,7 @@ public class DemoAccountsSeeder implements CommandLineRunner {
         Company company = new Company();
         company.setCompanyName("Demo HRM Company");
         company.setCompanyCode("DEMO-HRM");
-        company.setEmail("support@demo.hrm.test");
+        company.setEmail("support@hrm-portal.local");
         company.setPhone("0000000000");
         company.setStatus(CompanyStatus.ACTIVE);
         company.setActive(true);
@@ -115,6 +115,15 @@ public class DemoAccountsSeeder implements CommandLineRunner {
     }
 
     private void createUserIfMissing(DemoAccount account, Company company) {
+        // Safe migration: check if legacy demo email exists in DB and migrate to new gmail address
+        if (account.legacyEmail() != null) {
+            userRepository.findByEmail(account.legacyEmail()).ifPresent(legacyUser -> {
+                log.info("Migrating demo user email from {} to {}", legacyUser.getEmail(), account.email());
+                legacyUser.setEmail(account.email());
+                userRepository.save(legacyUser);
+            });
+        }
+
         if (userRepository.findByEmail(account.email()).isPresent()) {
             return;
         }
@@ -141,6 +150,15 @@ public class DemoAccountsSeeder implements CommandLineRunner {
             DemoAccount account,
             Company company,
             Department department) {
+        // Safe migration of existing employee profile if present
+        if (account.legacyEmail() != null) {
+            employeeRepository.findByEmail(account.legacyEmail()).ifPresent(legacyEmp -> {
+                log.info("Migrating demo employee profile email from {} to {}", legacyEmp.getEmail(), account.email());
+                legacyEmp.setEmail(account.email());
+                employeeRepository.save(legacyEmp);
+            });
+        }
+
         if (employeeRepository.findByEmail(account.email()).isPresent()) {
             return;
         }
@@ -159,6 +177,6 @@ public class DemoAccountsSeeder implements CommandLineRunner {
         employeeRepository.save(employee);
     }
 
-    private record DemoAccount(String role, String fullName, String email, boolean employeeProfile) {
+    private record DemoAccount(String role, String fullName, String email, String legacyEmail, boolean employeeProfile) {
     }
 }

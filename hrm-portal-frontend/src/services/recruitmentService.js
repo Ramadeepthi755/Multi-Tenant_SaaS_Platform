@@ -112,6 +112,12 @@ export const deleteCandidate = async (id) => {
   return response.data;
 };
 
+// Update Candidate Status
+export const updateCandidateStatus = async (id, status) => {
+  const response = await api.put(`/recruitment/candidates/${id}/status`, { status });
+  return response.data;
+};
+
 // Upload Resume
 export const uploadResume = async (
   candidateId,

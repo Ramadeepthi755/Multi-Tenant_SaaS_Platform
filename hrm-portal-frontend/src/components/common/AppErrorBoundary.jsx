@@ -149,6 +149,31 @@ class AppErrorBoundary
               safe. Try the page again.
             </Typography>
 
+            {this.state.error && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: "error.50",
+                  color: "error.dark",
+                  borderRadius: 2,
+                  fontSize: 13,
+                  textAlign: "left",
+                  maxHeight: 200,
+                  overflow: "auto",
+                  fontFamily: "monospace",
+                  width: "100%"
+                }}
+              >
+                <strong>Error:</strong> {this.state.error.toString()}
+                {this.state.error.stack && (
+                  <pre style={{ margin: "8px 0 0 0", fontSize: 11, whiteSpace: "pre-wrap" }}>
+                    {this.state.error.stack}
+                  </pre>
+                )}
+              </Box>
+            )}
+
 
             <Stack
               direction="row"

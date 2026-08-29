@@ -12,7 +12,7 @@ import com.workforce.hrm.dto.response.AuditLogResponseDTO;
 import com.workforce.hrm.service.AuditLogService;
 
 @RestController
-@RequestMapping("/api/audit")
+@RequestMapping({"/api/audit", "/api/audit-logs"})
 public class AuditLogController {
 
     private final AuditLogService auditLogService;

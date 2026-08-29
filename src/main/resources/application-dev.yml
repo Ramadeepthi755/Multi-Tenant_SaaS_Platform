@@ -14,5 +14,11 @@ server:
   port: 8080
 app:
   seed:
-    demo-accounts: ${SEED_DEMO_ACCOUNTS:false}
-    demo-password: ${DEMO_ACCOUNT_PASSWORD:}
+    demo-accounts: ${SEED_DEMO_ACCOUNTS:true}
+    demo-password: ${DEMO_ACCOUNT_PASSWORD:AdminPassword123!}
+    enterprise-demo: ${SEED_ENTERPRISE_DEMO:false}
+  ai:
+    provider: ${AI_PROVIDER:openai}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-4o-mini}

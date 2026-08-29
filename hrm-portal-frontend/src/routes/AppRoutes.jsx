@@ -235,6 +235,9 @@ import JobList
 import CandidateList
   from "../pages/recruitment/CandidateList";
 
+import RecruitmentKanban
+  from "../pages/recruitment/RecruitmentKanban";
+
 import InterviewList
   from "../pages/recruitment/InterviewList";
 
@@ -249,6 +252,9 @@ SECURITY
 
 import AuditLogs
   from "../pages/security/AuditLogs";
+
+import SubscriptionDashboard
+  from "../pages/subscription/SubscriptionDashboard";
 
 
 const AppRoutes = () => {
@@ -651,6 +657,11 @@ const AppRoutes = () => {
               />
 
               <Route
+                path="/recruitment/pipeline"
+                element={<RecruitmentKanban />}
+              />
+
+              <Route
                 path="/recruitment/interviews"
                 element={<InterviewList />}
               />
@@ -701,6 +712,15 @@ const AppRoutes = () => {
             <Route
               path="/settings"
               element={<Settings />}
+            />
+
+            {/* =================================================
+                SUBSCRIPTION
+            ================================================= */}
+
+            <Route
+              path="/subscription"
+              element={<SubscriptionDashboard />}
             />
 
 

@@ -27,16 +27,14 @@ import jakarta.validation.Valid;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
-
-
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
+    private final com.workforce.hrm.repository.EmployeeLifecycleEventRepository lifecycleEventRepository;
 
     public EmployeeController(
-            EmployeeService employeeService) {
+            EmployeeService employeeService,
+            com.workforce.hrm.repository.EmployeeLifecycleEventRepository lifecycleEventRepository) {
 
         this.employeeService = employeeService;
+        this.lifecycleEventRepository = lifecycleEventRepository;
     }
 
 
@@ -195,6 +193,7 @@ public class EmployeeController {
     }
 
 
+
     // =========================================================
     // SEARCH EMPLOYEES
     // =========================================================
@@ -208,5 +207,19 @@ public class EmployeeController {
 
         return employeeService.searchEmployees(
                 keyword, PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100)));
+    }
+
+    // =========================================================
+    // EMPLOYEE LIFECYCLE TIMELINE
+    // =========================================================
+
+    @GetMapping("/{id}/timeline")
+    @PreAuthorize("hasAuthority('EMPLOYEE_READ') or hasRole('EMPLOYEE')")
+    public com.workforce.hrm.dto.response.ApiResponse<java.util.List<com.workforce.hrm.entity.EmployeeLifecycleEvent>> getEmployeeTimeline(
+            @PathVariable Long id) {
+        // Validate access
+        employeeService.getEmployeeById(id);
+        java.util.List<com.workforce.hrm.entity.EmployeeLifecycleEvent> events = lifecycleEventRepository.findByEmployeeEmployeeIdOrderByTimestampDesc(id);
+        return com.workforce.hrm.dto.response.ApiResponse.success("Employee lifecycle timeline", events);
     }
 }

@@ -31,15 +31,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
     private final AuditLogService auditLogService;
+    private final com.workforce.hrm.repository.EmployeeLifecycleEventRepository lifecycleEventRepository;
 
     public EmployeeServiceImpl(EmployeeRepository employeeRepository,
             DepartmentRepository departmentRepository,
             DesignationRepository designationRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            com.workforce.hrm.repository.EmployeeLifecycleEventRepository lifecycleEventRepository) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.designationRepository = designationRepository;
         this.auditLogService = auditLogService;
+        this.lifecycleEventRepository = lifecycleEventRepository;
     }
 
     @Override
@@ -56,6 +59,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         applyRequest(employee, request, department, designation);
         Employee saved = employeeRepository.save(employee);
         audit("CREATE", saved);
+
+        // Record Lifecycle Event (ONBOARDING / ACTIVE)
+        recordLifecycleEvent(saved, "ONBOARDING", "NEW_HIRE", saved.getStatus().name(), "Employee record created and onboarded");
+
         return EmployeeMapper.toResponseDTO(saved);
     }
 
@@ -113,9 +120,22 @@ public class EmployeeServiceImpl implements EmployeeService {
         });
         Department department = resolveDepartment(request.getDepartmentId());
         Designation designation = resolveDesignation(request.getDesignationId(), department);
+
+        // Check for promotion or department transfer
+        boolean deptChanged = existing.getDepartment() != null && !existing.getDepartment().getDepartmentId().equals(department.getDepartmentId());
+        boolean desigChanged = existing.getDesignation() != null && !existing.getDesignation().getDesignationId().equals(designation.getDesignationId());
+
         applyRequest(existing, request, department, designation);
         Employee saved = employeeRepository.save(existing);
         audit("UPDATE", saved);
+
+        if (deptChanged) {
+            recordLifecycleEvent(saved, "TRANSFER", "DEPT_CHANGE", department.getDepartmentName(), "Transferred to department: " + department.getDepartmentName());
+        }
+        if (desigChanged) {
+            recordLifecycleEvent(saved, "PROMOTION", "TITLE_CHANGE", designation.getDesignationName(), "Role/Designation updated to: " + designation.getDesignationName());
+        }
+
         return EmployeeMapper.toResponseDTO(saved);
     }
 
@@ -125,18 +145,43 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new IllegalArgumentException("Employee status is required");
         }
         Employee employee = getEmployeeEntity(id);
+        String oldStatus = employee.getStatus() != null ? employee.getStatus().name() : "UNKNOWN";
         employee.setStatus(status);
         Employee saved = employeeRepository.save(employee);
         audit("UPDATE_STATUS", saved);
+
+        String eventType = (status == EmployeeStatus.ACTIVE) ? "ACTIVE" : (status == EmployeeStatus.INACTIVE || status == EmployeeStatus.TERMINATED) ? "EXIT" : "STATUS_CHANGE";
+        recordLifecycleEvent(saved, eventType, oldStatus, status.name(), "Status changed from " + oldStatus + " to " + status.name());
+
         return EmployeeMapper.toResponseDTO(saved);
     }
 
     @Override
     public void deleteEmployee(Long id) {
         Employee employee = getEmployeeEntity(id);
+        String oldStatus = employee.getStatus() != null ? employee.getStatus().name() : "UNKNOWN";
         employee.setStatus(EmployeeStatus.INACTIVE);
         employeeRepository.save(employee);
         audit("DEACTIVATE", employee);
+        recordLifecycleEvent(employee, "EXIT", oldStatus, "INACTIVE", "Employee deactivated");
+    }
+
+    private void recordLifecycleEvent(Employee employee, String eventType, String prev, String next, String notes) {
+        try {
+            com.workforce.hrm.entity.EmployeeLifecycleEvent event = com.workforce.hrm.entity.EmployeeLifecycleEvent.builder()
+                    .employee(employee)
+                    .company(employee.getCompany())
+                    .eventType(eventType)
+                    .previousState(prev)
+                    .newState(next)
+                    .actorEmail(SecurityUtils.getCurrentUserEmail())
+                    .timestamp(java.time.LocalDateTime.now())
+                    .notes(notes)
+                    .build();
+            lifecycleEventRepository.save(event);
+        } catch (Exception e) {
+            // Non-blocking log
+        }
     }
 
     @Override

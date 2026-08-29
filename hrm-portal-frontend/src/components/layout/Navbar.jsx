@@ -34,8 +34,23 @@ import {
   useAuth
 } from "../../context/AuthContext";
 
+import CommandPalette
+  from "./CommandPalette";
+
 import LogoutDialog
   from "./LogoutDialog";
+
+import AiCopilotDialog
+  from "../ui/AiCopilotDialog";
+
+import GlobalSearch
+  from "../search/GlobalSearch";
+
+import KeyboardCommandKeyOutlinedIcon
+  from "@mui/icons-material/KeyboardCommandKeyOutlined";
+import AutoAwesomeOutlinedIcon
+  from "@mui/icons-material/AutoAwesomeOutlined";
+import Button from "@mui/material/Button";
 
 
 const Navbar = () => {
@@ -69,6 +84,16 @@ const Navbar = () => {
   const [
     logoutDialogOpen,
     setLogoutDialogOpen
+  ] = useState(false);
+
+  const [
+    commandPaletteOpen,
+    setCommandPaletteOpen
+  ] = useState(false);
+
+  const [
+    aiDialogOpen,
+    setAiDialogOpen
   ] = useState(false);
 
 
@@ -223,7 +248,7 @@ const Navbar = () => {
           height: 72,
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           px: {
             xs: 2,
             md: 3
@@ -236,12 +261,50 @@ const Navbar = () => {
             "background.paper"
         }}
       >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <GlobalSearch />
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setCommandPaletteOpen(true)}
+            startIcon={<KeyboardCommandKeyOutlinedIcon fontSize="small" />}
+            sx={{
+              display: { xs: "none", sm: "inline-flex" },
+              borderRadius: 2,
+              borderColor: "divider",
+              color: "text.secondary",
+              textTransform: "none",
+              fontWeight: 650,
+              fontSize: 12,
+              px: 1.5,
+              py: 0.5
+            }}
+          >
+            Quick Actions <Typography component="span" variant="caption" sx={{ ml: 1, px: 0.75, py: 0.2, borderRadius: 1, bgcolor: "action.selected", fontWeight: 800 }}>⌘K</Typography>
+          </Button>
+        </Box>
 
         <Stack
           direction="row"
           alignItems="center"
           spacing={1.5}
         >
+
+          {/* =================================================
+              AI COPILOT
+              ================================================= */}
+          <Tooltip title="HR AI Copilot">
+            <IconButton
+              onClick={() => setAiDialogOpen(true)}
+              sx={{
+                bgcolor: "primary.light",
+                color: "primary.dark",
+                "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" }
+              }}
+            >
+              <AutoAwesomeOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
           {/* =================================================
               NOTIFICATIONS
@@ -479,6 +542,16 @@ const Navbar = () => {
         onConfirm={
           handleLogoutConfirm
         }
+      />
+
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={setCommandPaletteOpen}
+      />
+
+      <AiCopilotDialog
+        open={aiDialogOpen}
+        onClose={() => setAiDialogOpen(false)}
       />
 
     </>

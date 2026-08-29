@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 
 import EmployeeDocuments from "./EmployeeDocuments";
+import EmployeeTimeline from "./EmployeeTimeline";
 
 const EmployeeDetails = ({
   open,
@@ -368,6 +369,26 @@ const EmployeeDetails = ({
           </Grid>
 
         </Grid>
+
+        {/* ===================================================
+            LIFECYCLE TIMELINE
+        =================================================== */}
+
+        <Box mt={4}>
+          <Divider sx={{ mb: 3 }} />
+
+          <Typography
+            variant="h6"
+            fontWeight={700}
+            mb={2}
+          >
+            Employee Lifecycle Timeline
+          </Typography>
+
+          <EmployeeTimeline
+            employeeId={employee.employeeId}
+          />
+        </Box>
 
         {/* ===================================================
             DOCUMENTS
