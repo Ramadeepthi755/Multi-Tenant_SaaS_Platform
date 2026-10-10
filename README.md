@@ -1,30 +1,30 @@
 # Multi-Tenant HRM SaaS
 
-A multi-tenant Human Resource Management (HRM) platform for organizations to manage employees and HR workflows in one application. It includes employee management, attendance, leave approvals, payroll, recruitment, performance reviews, reports, and AI-assisted HR tools.
+A multi-tenant Human Resource Management (HRM) platform that helps organizations manage employees and core HR workflows in one application.
 
-**The key engineering problem:** multiple companies share one application, but each company must only access its own data. The backend derives tenant scope from the authenticated user, combines it with JWT authentication and role-based authorization, and exposes functionality through Spring Boot REST APIs to a React frontend.
+**The problem it solves:** multiple companies can use the same HR platform, but each company must only access its own workforce data. This project uses a Spring Boot backend with JWT authentication, role-based authorization, and server-side tenant scoping, alongside a React frontend.
 
-- **Repository:** https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform
-- **Live demo:** Not currently published. Run locally using the steps below.
-- **Tech stack:** Java 21, Spring Boot 3.5.x, Spring Security, JWT, Spring Data JPA/Hibernate, H2 (local default) / PostgreSQL driver, React 19, Vite, Axios, Material UI, Tailwind CSS.
+- **Repository:** [Multi-Tenant_SaaS_Platform](https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform)
+- **Live demo:** A public deployment URL is not configured yet. After starting the app locally, open [http://localhost:5173](http://localhost:5173) (local machine only).
+- **Stack:** Java 21, Spring Boot 3.5.x, Spring Security, JWT, Spring Data JPA/Hibernate, H2 by default with a PostgreSQL driver, React 19, Vite, Axios, Material UI, and Tailwind CSS.
 
-## What it does
+## Features
 
 - **Multi-tenancy:** server-side company context and tenant-scoped data access.
-- **Authentication and authorization:** JWT authentication, protected routes/APIs, role-based access controls.
-- **Employee lifecycle:** employee directory, profiles, departments, designations, onboarding, and status tracking.
-- **Attendance and leave:** check-in/check-out, attendance history, leave requests, balances, and approvals.
-- **Payroll and documents:** salary information, payslips, employee document upload and access.
-- **Recruitment:** jobs, candidates, interview workflow, and Kanban pipeline.
+- **Authentication and authorization:** JWT, role-based access control, protected routes, and backend API guards.
+- **Employee management:** directory, profiles, departments, designations, onboarding, and employee status tracking.
+- **Attendance and leave:** check-in/check-out, attendance history, leave requests, balances, and approval workflows.
+- **Payroll and documents:** salary details, payslips, and employee document upload/access.
+- **Recruitment:** job openings, candidates, interview workflow, and Kanban pipeline.
 - **Performance and reporting:** performance reviews, workforce dashboards, HR reports, and CSV exports.
-- **AI-assisted HR:** provider-based HR copilot, policy Q&A, job-description generation, screening, performance summaries, and attendance anomaly analysis. A deterministic fallback is available; live provider use requires valid provider credentials and quota.
+- **AI-assisted HR:** HR copilot, policy Q&A, job-description generation, candidate screening, performance summaries, and attendance anomaly analysis. A deterministic fallback is available; live provider use requires valid API credentials and quota.
 
-## Roles
+## User roles
 
 | Role | Primary access |
 |---|---|
 | `SUPER_ADMIN` | Platform administration, companies, users, roles, and subscriptions |
-| `COMPANY_ADMIN` | Company configuration, people, payroll, reports, and organization settings |
+| `COMPANY_ADMIN` | Company configuration, employees, payroll, reports, and organization settings |
 | `HR` | Employee operations, recruitment, attendance, leave, and performance |
 | `MANAGER` | Team information, attendance, leave approvals, and performance |
 | `EMPLOYEE` | Self-service attendance, leave, payroll, and personal documents |
@@ -33,58 +33,56 @@ A multi-tenant Human Resource Management (HRM) platform for organizations to man
 
 ```text
 Browser (React + Vite)
-        │  HTTPS/REST + JWT
+        │  REST API + JWT
         ▼
 Spring Boot REST API
-        ├── Spring Security / JWT filter
+        ├── Spring Security / JWT authentication
         ├── Controllers → Services → Repositories
         ├── Authenticated tenant context / role checks
         ▼
-H2 (local default) or configured PostgreSQL database
+H2 (local default) or configured database
 
 Spring Boot AI services → provider factory
                          ├── configured AI provider
                          └── deterministic fallback
 ```
 
-The frontend is in `hrm-portal-frontend/`. The backend is at the repository root, with application code in `src/main/java/com/workforce/hrm/`, configuration and migrations in `src/main/resources/`, and automated tests in `src/test/java/com/workforce/hrm/`.
+The backend lives at the repository root. The frontend is in `hrm-portal-frontend/`.
 
 ## Quick start
 
 ### Prerequisites
 
 - Java 21
-- Node.js and npm (use a current supported Node.js LTS release)
+- Node.js and npm (a current supported Node.js LTS release)
 - Git
 
-### 1. Clone the real repository
+### 1. Clone this repository
 
 ```bash
 git clone https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform.git
 cd Multi-Tenant_SaaS_Platform
 ```
 
-### 2. Configure environment variables
+### 2. Configure local environment
 
-A safe template is available at [`.env.example`](.env.example). Copy it for reference:
+The repository includes a safe template: [`.env.example`](.env.example). Copy it and edit it before starting the application:
 
 ```bash
 cp .env.example .env
 ```
 
-**Note:** Spring Boot does not automatically load every `.env` file in a plain local run. Export the variables in your shell or configure them in your IDE/run configuration. Do not commit `.env`, real API keys, or production credentials.
+Generate a fresh local JWT secret with `openssl rand -base64 32`, then replace `JWT_SECRET` in `.env` with that output. Keep `AI_PROVIDER=fallback` to develop without a paid external AI API. To seed demo users locally, set `SEED_DEMO_ACCOUNTS=true` and choose a unique `DEMO_ACCOUNT_PASSWORD` in `.env`.
 
-For a local development run, the application defaults to an in-memory H2 database. Set strong local-only secrets explicitly before starting:
+Spring Boot does **not** automatically load this project's `.env` file. In Bash or Zsh, after editing the file, load it into the current terminal:
 
 ```bash
-export JWT_SECRET='replace-with-a-long-random-local-development-secret'
-export SEED_DEMO_ACCOUNTS=true
-export DEMO_ACCOUNT_PASSWORD='replace-with-a-local-demo-password'
-# Optional; leave unset or empty to use the deterministic AI fallback.
-export AI_PROVIDER=fallback
+set -a
+source .env
+set +a
 ```
 
-If you select a live AI provider, set its matching API key as an environment variable (for example, `OPENAI_API_KEY`) and make sure the provider account has available quota. Never place a key in frontend code.
+Alternatively, enter the values in your IDE's run configuration. Never commit `.env`, live API keys, or production credentials. Do not use development settings or demo accounts in production.
 
 ### 3. Start the backend
 
@@ -94,11 +92,11 @@ From the repository root:
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The API listens on `http://localhost:8080` by default. The OpenAPI/Swagger UI is configured at `http://localhost:8080/swagger-ui.html` when the backend is running.
+The backend listens on `http://localhost:8080` by default. Swagger UI is configured at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html).
 
 ### 4. Start the frontend
 
-Open a second terminal at the repository root:
+Open a second terminal:
 
 ```bash
 cd hrm-portal-frontend
@@ -106,11 +104,11 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (normally http://localhost:5173). The Vite configuration proxies `/api` requests to `http://localhost:8080`. If port 5173 is occupied, Vite may choose the next available port.
+Open the URL printed by Vite (normally [http://localhost:5173](http://localhost:5173)). Vite proxies `/api` requests to `http://localhost:8080`. If port 5173 is busy, Vite may select another port; use the URL shown in the terminal.
 
-### Local demo access
+### Local demo accounts
 
-When demo-account seeding is enabled in the development profile, the app can seed accounts for the five roles. The default development configuration historically defines `AdminPassword123!` as its demo password; **do not use that default outside a disposable local development environment**. Prefer setting `DEMO_ACCOUNT_PASSWORD` to a local-only value before running. If an account cannot log in, check the seeding configuration and backend logs rather than assuming demo records already exist.
+Demo account seeding is controlled by `SEED_DEMO_ACCOUNTS`. Enable it only for local development and set `DEMO_ACCOUNT_PASSWORD` to a password you choose. The app configuration has historically included a default demo password; do not rely on default credentials or use them beyond a disposable local environment. If sign-in fails, confirm demo seeding is enabled and check the backend logs.
 
 ## Project structure
 
@@ -146,35 +144,57 @@ Multi-Tenant_SaaS_Platform/
     └── vite.config.js
 ```
 
-The tree above highlights the important source folders; it does not list every source file.
+This is a high-level view of the important folders, not an exhaustive file listing. Runtime uploads are stored under `uploads/`; do not commit real employee documents.
 
 ## Tests and quality checks
 
-Run these commands from the indicated directories. This README does not claim that checks pass on the current checkout; run them locally or inspect a recent CI run to confirm current results.
+Run these checks on your current checkout. This README does not claim that they pass on the current commit; confirm results locally or through a recent CI run.
 
 | Check | Command |
 |---|---|
-| Backend tests | From repository root: `./mvnw clean test` |
-| Frontend production build | From repository root: `cd hrm-portal-frontend && npm ci && npm run build` |
+| Backend automated tests | From repository root: `./mvnw clean test` |
+| Frontend production build | `cd hrm-portal-frontend && npm install && npm run build` |
 | Frontend lint | From `hrm-portal-frontend/`: `npm run lint` |
 | Patch whitespace check | From repository root after changes: `git diff --check` |
 
-A historical acceptance report is available in [`HRM_PORTAL_FINAL_ACCEPTANCE_REPORT.md`](HRM_PORTAL_FINAL_ACCEPTANCE_REPORT.md). Treat it as a dated report, not a substitute for running the checks against the current commit.
+A historical [acceptance report](HRM_PORTAL_FINAL_ACCEPTANCE_REPORT.md) documents checks from August 2026. Treat it as a dated report, not as proof that the same checks pass on the current commit.
 
 ## Security notes
 
-- Tenant scope must come from the authenticated server-side identity, not a tenant ID supplied by the browser.
-- Enforce authorization on backend APIs; frontend route guards are not a security boundary by themselves.
-- Replace the default JWT secret and demo password before any deployment. Do not use development profile settings in production.
-- Keep API keys and database credentials in deployment environment/secrets settings, never in source code or frontend bundles.
-- Use a properly secured database, HTTPS, restricted CORS origins, and production-ready file storage when deploying.
+- Derive tenant scope from the authenticated server-side identity, not a tenant ID supplied by the browser.
+- Enforce authorization on backend APIs; frontend route guards alone are not a security boundary.
+- Replace the JWT secret and demo password before any deployment. Do not use the development profile in production.
+- Store API keys and database credentials in environment variables or deployment secret storage, never in frontend bundles or source control.
+- Configure HTTPS, restricted CORS origins, a production database, and secure file storage before deployment.
 
 ## Screenshots
 
-The repository README includes screenshots of the home page, login, role dashboards, recruitment Kanban, and AI HR Copilot. Scroll below this overview on the [README page](https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform#screenshots) to view them.
+### Home
+<img width="1200" alt="Home screen" src="https://github.com/user-attachments/assets/3e6339fb-ac6e-441e-9ea3-34b2e5a2e004" />
+
+### Login
+<img width="1200" alt="Login screen" src="https://github.com/user-attachments/assets/6479256c-4fb1-4d83-8b46-af3a1da0dd26" />
+
+### Super Admin dashboard
+<img width="1200" alt="Super Admin dashboard" src="https://github.com/user-attachments/assets/731ad548-da05-4335-9784-373093edaf9e" />
+
+### Company Admin dashboard
+<img width="1200" alt="Company Admin dashboard" src="https://github.com/user-attachments/assets/4fd0405a-e935-4cd1-9be8-00e72a9327c5" />
+
+### Manager dashboard
+<img width="1200" alt="Manager dashboard" src="https://github.com/user-attachments/assets/0817c279-54ff-4399-b907-c52d5b3a3477" />
+
+### Employee dashboard
+<img width="1200" alt="Employee dashboard" src="https://github.com/user-attachments/assets/c8624b61-5240-4921-9f52-44b61837f52e" />
+
+### Recruitment Kanban
+<img width="1200" alt="Recruitment Kanban" src="https://github.com/user-attachments/assets/49966e06-65e7-4c33-8ea5-f17d1c0ac9d4" />
+
+### AI HR Copilot
+<img width="1200" alt="AI HR Copilot" src="https://github.com/user-attachments/assets/fe47c127-de46-4c49-bccd-052e9bec10c0" />
 
 ## Author
 
 **Ramadeepthi Badireddy** — B.Tech, Information Technology.
 
-If you find the project useful, please consider starring the [repository](https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform).
+If you find this project useful, please consider starring the [repository](https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform).
