@@ -6,7 +6,7 @@ A multi-tenant Human Resource Management (HRM) platform that helps organizations
 
 - **Repository:** [Multi-Tenant_SaaS_Platform](https://github.com/Ramadeepthi755/Multi-Tenant_SaaS_Platform)
 - **Live demo:** A public deployment URL is not configured yet. After starting the app locally, open [http://localhost:5173](http://localhost:5173) (local machine only).
-- **Stack:** Java 21, Spring Boot 3.5.x, Spring Security, JWT, Spring Data JPA/Hibernate, H2 by default with a PostgreSQL driver, React 19, Vite, Axios, Material UI, and Tailwind CSS.
+- **Stack:** Java 21, Spring Boot 3.5.x, Spring Security, JWT, Spring Data JPA/Hibernate, H2 for the default local run, React 19, Vite, Axios, Material UI, and Tailwind CSS.
 
 ## Features
 
@@ -40,7 +40,7 @@ Spring Boot REST API
         ├── Controllers → Services → Repositories
         ├── Authenticated tenant context / role checks
         ▼
-H2 (local default) or configured database
+H2 local database (default)
 
 Spring Boot AI services → provider factory
                          ├── configured AI provider
@@ -135,7 +135,7 @@ Multi-Tenant_SaaS_Platform/
 │   │   └── resources/
 │   │       ├── application.properties
 │   │       ├── application-dev.yml
-│   │       └── db/migration/
+│   │       └── application-prod.yml
 │   └── test/java/com/workforce/hrm/
 └── hrm-portal-frontend/
     ├── src/
@@ -144,7 +144,7 @@ Multi-Tenant_SaaS_Platform/
     └── vite.config.js
 ```
 
-This is a high-level view of the important folders, not an exhaustive file listing. Runtime uploads are stored under `uploads/`; do not commit real employee documents.
+This is a high-level view of the important folders, not an exhaustive file listing. Runtime uploads are stored under `uploads/`; do not commit real employee documents. The Docker Compose file includes a PostgreSQL service, but the datasource/driver configuration should be validated before relying on that setup. The local quick start above uses the default H2 configuration.
 
 ## Tests and quality checks
 
